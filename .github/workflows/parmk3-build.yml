@@ -67,7 +67,10 @@ jobs:
           INTEL_BIN: /home/runner/intelFPGA_lite/18.1/quartus/bin
         run: |
           set -e
-          make -C utils rle
+          # `all` builds rle (needed by the FPGA Makefile to compress .rbf
+          # into .bi3) AND bin2c (needed by the firmware Makefile to embed
+          # fpga_mini.bi3 as cfgware.h).
+          make -C utils
           ( cd verilog/sd2snes_parmk3 && make INTEL_BIN="$INTEL_BIN" mk3 )
           ( cd verilog/sd2snes_mini   && make INTEL_BIN="$INTEL_BIN" mk3 )
 
