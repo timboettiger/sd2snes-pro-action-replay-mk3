@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Quartus Prime Lite 18.1
+      - name: Install Quartus Prime Lite 18.1 + Cyclone IV E pack
         run: |
           set -e
           sudo apt-get update
@@ -35,13 +35,21 @@ jobs:
             libglib2.0-0 libfontconfig1 libfreetype6 libxext6 libxrender1 \
             libxtst6 libxi6 libsm6 libxkbcommon0 libdbus-1-3 libpng16-16 \
             python3 perl
+          # Setup downloads ~2 GB; Cyclone IV E device pack ~470 MB. The Lite
+          # installer does NOT pre-install Cyclone IV E -- without the qdz the
+          # build fails with "Family is not a valid device family".
           wget -q https://downloads.intel.com/akdlm/software/acdsinst/18.1std/625/ib_installers/QuartusLiteSetup-18.1.0.625-linux.run
+          wget -q https://downloads.intel.com/akdlm/software/acdsinst/18.1std/625/ib_installers/cyclone-18.1.0.625.qdz
           chmod +x QuartusLiteSetup-18.1.0.625-linux.run
           ./QuartusLiteSetup-18.1.0.625-linux.run \
             --mode unattended --unattendedmodeui none \
             --installdir "$HOME/intelFPGA_lite/18.1" \
             --accept_eula 1 \
             --disable-components quartus_help,modelsim_ase,modelsim_ae
+          # Drop the cyclone qdz into the devices/ folder; Quartus extracts it
+          # on first use.
+          mkdir -p "$HOME/intelFPGA_lite/18.1/quartus/devices"
+          cp cyclone-18.1.0.625.qdz "$HOME/intelFPGA_lite/18.1/quartus/devices/"
           echo "$HOME/intelFPGA_lite/18.1/quartus/bin" >> "$GITHUB_PATH"
 
       - name: Install firmware toolchain (arm-none-eabi-gcc + snescom)
