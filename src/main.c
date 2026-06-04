@@ -589,11 +589,16 @@ int main(void) {
                 goto snes_loop_out;
               case SNES_CMD_SAVESTATE:
                 usb_cmd = 0;
-                save_backup_state();
+                /* The MK3 BIOS persists its own snapshots into its 32 KB
+                 * cartridge SRAM and reaches into WRAM via the PAR-NMI
+                 * handler. Letting sd2snes-side save/loadstate run in
+                 * parallel would clobber the BIOS's saved-DP / saved-stack
+                 * area and lock up the wrapper on the next NMI. */
+                if(!STM.parmk3_wrapper_active) save_backup_state();
                 break;
               case SNES_CMD_LOADSTATE:
                 usb_cmd = 0;
-                load_backup_state();
+                if(!STM.parmk3_wrapper_active) load_backup_state();
                 break;
               case SNES_CMD_COMBO_TRANSITION:
                 usb_cmd = 0;

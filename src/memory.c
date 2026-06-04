@@ -281,7 +281,17 @@ uint32_t load_rom(uint8_t* filename, uint32_t base_addr, uint8_t flags) {
   if(flags & LOADROM_WITH_PARMK3) {
     parmk3_apply(&romprops);
   } else {
+    /* Leaving the wrapper: clear the cart-LED indicator the polling loop
+     * left in MK3 state, so the next game does not boot with stale red /
+     * gold LEDs lit. The SD-activity code re-takes ownership shortly
+     * after via readled()/writeled() during the actual load. */
+    if(STM.parmk3_wrapper_active) {
+      readled(0);
+      writeled(0);
+      rdyled(0);
+    }
     STM.parmk3_wrapper_active = 0;
+    STM.parmk3_leds = 0;
   }
 
   if(flags & LOADROM_WITH_COMBO) {
