@@ -29,8 +29,38 @@ cartridge LEDs mirror the two MK3 PCB LEDs plus a mode indicator.
 ```
 
 Plus the firmware on the cart itself:
-- `firmware.im3` (MK3 hardware) — flash via the bootloader
-- `firmware.img` (MK2 hardware) — flash via the bootloader
+- `firmware.im3` (sd2snes MK3 hardware, LPC1768) — flash via the bootloader
+- `firmware.stm` (FX Pak Pro STM32 variant) — flash via the bootloader
+- `firmware.img` (sd2snes MK2 hardware) — flash via the bootloader
+
+Check which firmware variant your cart needs with `utils/fxpak.py info` — it
+prints the device name ("FXPAK PRO STM32", "sd2snes Mk.II", "sd2snes Mk.III").
+
+## Uploading directly over USB (no qusb2snes)
+
+If your FX Pak Pro is plugged in via USB while you're at the workstation:
+
+```bash
+# show device name + firmware version + currently loaded ROM
+utils/fxpak.py info
+
+# upload one file
+utils/fxpak.py put fpga_parmk3.bi3 /sd2snes/fpga_parmk3.bi3
+
+# bulk-upload everything in ./parmk3-bundle to /sd2snes/
+utils/fxpak.py install-parmk3 --bundle ./parmk3-bundle
+
+# reset back into the sd2snes menu (so the new files get picked up)
+utils/fxpak.py menu
+
+# boot a specific ROM
+utils/fxpak.py boot /myroms/super_mario_world.smc
+```
+
+The script talks the native USBINT CDC ACM protocol on
+`/dev/cu.usbmodem*` directly; no qusb2snes daemon needed. Use `--dev` to
+override the device path if multiple sd2snes / FX Pak units are
+connected.
 
 ## Where to get `par_mk3.bin`
 
