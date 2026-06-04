@@ -995,7 +995,9 @@ void save_parmk3_sram(uint8_t* gamefile) {
 
 uint32_t load_with_parmk3(uint8_t* gamefile) {
   /* The wrapper is only meaningful if the BIOS dump is present. Probe first
-   * so we can refuse early and avoid a half-configured FPGA state. */
+   * so we can refuse early and avoid a half-configured FPGA state. The menu
+   * loader pre-arms LOADROM_WAIT_SNES on the regular flow, so we mirror that
+   * here -- otherwise the FPGA reconfig races the running menu code. */
   if(!load_parmk3_bios()) {
     printf("PAR MK3: refusing to wrap %s (no BIOS)\n", gamefile);
     STM.parmk3_wrapper_active = 0;
@@ -1006,7 +1008,8 @@ uint32_t load_with_parmk3(uint8_t* gamefile) {
                           LOADROM_WITH_SRAM
                         | LOADROM_WITH_RESET
                         | LOADROM_WITH_FPGA
-                        | LOADROM_WITH_PARMK3);
+                        | LOADROM_WITH_PARMK3
+                        | LOADROM_WAIT_SNES);
   if(!res) {
     STM.parmk3_wrapper_active = 0;
     return 0;

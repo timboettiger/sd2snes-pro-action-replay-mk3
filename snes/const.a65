@@ -236,7 +236,7 @@ mtext_chip_cx4_speed              .byt "Cx4 speed", 0
 mtext_chip_gsu_speed              .byt "SuperFX speed", 0
 mtext_chip_msu1_volume_boost      .byt "MSU-1 volume boost", 0
 mtext_cfg_parmk3                  .byt "Pro Action Replay", 0
-mtext_parmk3_enable               .byt "Route cheats through PAR MK3", 0
+mtext_parmk3_enable               .byt "Enable PAR MK3 wrapper", 0
 mtext_parmk3_led_visible          .byt " ",129,"Show LEDs overlay", 0
 mtext_parmk3_led_pos              .byt "  ",129,"LED position", 0
 mtext_mm_parmk3                   .byt "Pro Action Replay", 0
@@ -292,7 +292,7 @@ mdesc_chip_cx4_speed              .byt "Set speed of Cx4 soft core", 0
 mdesc_chip_gsu_speed              .byt "Set speed of SuperFX soft core", 0
 mdesc_chip_msu1_volume_boost      .byt "Set volume boost for MSU1 audio if your sd2snes is too quiet (Rev. E-G)", 0
 mdesc_cfg_parmk3                  .byt "Pro Action Replay MK3 wrapper (requires par_mk3.bin)", 0
-mdesc_parmk3_enable               .byt "Use MK3 BIOS Cheats/Trainer instead of internal cheat engine", 0
+mdesc_parmk3_enable               .byt "When on, every ROM launch boots through the MK3 BIOS (Cheats/Trainer)", 0
 mdesc_parmk3_led_visible          .byt "Draw MK3 LEDs as sprite overlay during gameplay", 0
 mdesc_parmk3_led_pos              .byt "Where the LED overlay is drawn on screen", 0
 mdesc_mm_parmk3                   .byt "Return to the PAR MK3 on-cart menu (only while a game runs)", 0
@@ -304,8 +304,6 @@ mdesc_gsu_speed_normal            .byt "Run at approx. original speed", 0
 text_filesel_selected_file .byt "Selected file", 0
 text_filesel_context_add_to_favorites .byt "Add to favorites", 0
 mdesc_filesel_context_add_to_favorites .byt "Add the selected file to favorites", 0
-text_filesel_context_launch_with_parmk3 .byt "Launch with PAR MK3", 0
-mdesc_filesel_context_launch_with_parmk3 .byt "Boot this ROM wrapped by the Pro Action Replay MK3 BIOS", 0
 
 text_filesel_context_remove_from_favorites .byt "Remove from favorites", 0
 mdesc_filesel_context_remove_from_favorites .byt "Remove the selected file from favorites", 0

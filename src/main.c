@@ -298,16 +298,26 @@ int main(void) {
       printf("cmd: %d\n", cmd);
       status_save_from_menu();
       uart_putc('-');
+      /* If the Pro Action Replay MK3 wrapper is armed (settings + BIOS on
+       * card), every regular ROM-load path transparently runs through the
+       * wrapper instead. SNES_CMD_LOAD_WITH_PARMK3 still exists as the
+       * explicit-override entry point for programmatic callers (USB tools,
+       * scripted launches). */
+#define PARMK3_ROUTING_ACTIVE() (CFG.enable_par && STM.parmk3_bios_loaded)
       switch(cmd) {
         case SNES_CMD_LOADROM:
           get_selected_name(file_lfn);
           printf("Selected name: %s\n", file_lfn);
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
-          filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          if(PARMK3_ROUTING_ACTIVE()) {
+            filesize = load_with_parmk3(file_lfn);
+          } else {
+            filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          }
           break;
         case SNES_CMD_LOAD_WITH_PARMK3:
           get_selected_name(file_lfn);
-          printf("PAR MK3 wrap: %s\n", file_lfn);
+          printf("PAR MK3 wrap (explicit): %s\n", file_lfn);
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
           filesize = load_with_parmk3(file_lfn);
           break;
@@ -345,13 +355,21 @@ int main(void) {
           cfg_get_listed_game(LAST_FILE, file_lfn, snes_get_mcu_param() & 0xff);
           printf("Selected name: %s\n", file_lfn);
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
-          filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          if(PARMK3_ROUTING_ACTIVE()) {
+            filesize = load_with_parmk3(file_lfn);
+          } else {
+            filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          }
           break;
         case SNES_CMD_LOADFAVORITE:
           cfg_get_listed_game(FAVORITES_FILE, file_lfn, snes_get_mcu_param() & 0xff);
           printf("Selected name: %s\n", file_lfn);
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
-          filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          if(PARMK3_ROUTING_ACTIVE()) {
+            filesize = load_with_parmk3(file_lfn);
+          } else {
+            filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          }
           break;
 /*        case SNES_CMD_SET_ALLOW_PAIR:
           cfg_set_pair_mode_allowed(snes_get_mcu_param() & 0xff);
@@ -455,7 +473,11 @@ int main(void) {
           printf("Autobooting: %s\n", file_lfn);
           if(file_lfn[0]) {
             cfg_add_listed_game(LAST_FILE, file_lfn, true);
-            filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+            if(PARMK3_ROUTING_ACTIVE()) {
+              filesize = load_with_parmk3(file_lfn);
+            } else {
+              filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+            }
             if(filesize) break; /* ROM loaded and SNES reset, exit menu loop */
           }
           /* clear file error state from any potential cause of failure
