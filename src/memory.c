@@ -951,7 +951,9 @@ void load_dspx(const uint8_t *filename, uint8_t coretype) {
 /* ----- Pro Action Replay MK3 wrapper ----------------------------------- */
 
 #define PARMK3_BIOS_FILE ((uint8_t*)"/sd2snes/par_mk3.bin")
-#define PARMK3_SAVE_FILE ((uint8_t*)SAVE_BASEDIR "par_mk3.srm")
+/* SAVE_BASEDIR is `("/sd2snes/saves/")` -- the parens block string-literal
+ * concatenation. Inline the path here instead. */
+#define PARMK3_SAVE_FILE ((uint8_t*)"/sd2snes/saves/par_mk3.srm")
 
 uint32_t load_parmk3_bios(void) {
   printf("PAR MK3: loading BIOS %s\n", PARMK3_BIOS_FILE);
