@@ -88,7 +88,16 @@ parmk3_fsm u_fsm(
 
 parmk3_mapper u_mapper(
   .CLK(CLK),
-  .switch_pos(fsm_state),     // use FSM-resolved state, not raw switch
+  // Raw MCU switch, NOT the FSM state — matches the openFPGA reference
+  // (mk3_snes_top.sv: both u_fsm and u_map take bridge_switch_pos). The
+  // mapper derives effective_mode from (switch_pos, control_b): while the
+  // BIOS menu runs control_b==0 so every switch position resolves to MENU;
+  // when the BIOS latches Control B on "Start Game", switch_pos==2 (MENU,
+  // the firmware default) resolves to CHEATS_ACTIVE because it is non-zero.
+  // The re-routed CMD_ENABLE/DISABLE_CHEATS move switch_pos to 1/0 to flip
+  // cheats on/off live. Feeding fsm_state here instead left the mapper stuck
+  // in NO_CHEATS because the FSM swallows the control_b pulse at switch==2.
+  .switch_pos(mcu_switch_pos),
   .control_b(control_b),
   .control_a(control_a),
   .SNES_ADDR(SNES_ADDR),
