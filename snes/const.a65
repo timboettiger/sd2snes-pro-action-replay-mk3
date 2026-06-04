@@ -304,6 +304,8 @@ mdesc_gsu_speed_normal            .byt "Run at approx. original speed", 0
 text_filesel_selected_file .byt "Selected file", 0
 text_filesel_context_add_to_favorites .byt "Add to favorites", 0
 mdesc_filesel_context_add_to_favorites .byt "Add the selected file to favorites", 0
+text_filesel_context_launch_with_parmk3 .byt "Launch with PAR MK3", 0
+mdesc_filesel_context_launch_with_parmk3 .byt "Boot this ROM wrapped by the Pro Action Replay MK3 BIOS", 0
 
 text_filesel_context_remove_from_favorites .byt "Remove from favorites", 0
 mdesc_filesel_context_remove_from_favorites .byt "Remove the selected file from favorites", 0

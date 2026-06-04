@@ -861,6 +861,20 @@ menu_enttab_filesel_context_file:
  .byt  ^text_filesel_selected_file ; for this menu
 ; ENTRIES
  .byt  MTYPE_FUNC_CLOSE
+ .word !text_filesel_context_launch_with_parmk3
+ .byt  ^text_filesel_context_launch_with_parmk3
+ .word !launch_selected_file_with_parmk3-1
+ .byt  ^launch_selected_file_with_parmk3-1
+ .byt  0
+ .byt  0,0,0
+ .word !mdesc_filesel_context_launch_with_parmk3
+ .byt  ^mdesc_filesel_context_launch_with_parmk3
+ .byt  0,0,0
+ .byt  0,0,0
+ .word !(mfunc_isenabled_parmk3_bios-1)
+ .byt  ^(mfunc_isenabled_parmk3_bios-1)
+
+ .byt  MTYPE_FUNC_CLOSE
  .word !text_filesel_context_add_to_favorites
  .byt  ^text_filesel_context_add_to_favorites
  .word !add_selected_file_to_favorites-1

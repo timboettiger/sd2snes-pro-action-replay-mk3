@@ -1221,6 +1221,18 @@ remove_selected_favorite_file:
   plp
   rtl
 
+launch_selected_file_with_parmk3:
+; have the MCU wrap the currently selected ROM with the Pro Action Replay
+; MK3 BIOS. The file path was already written to MCU_PARAM by ctx_is_file
+; before the context menu opened, so this is exactly the regular game
+; handshake -- only the command byte differs from CMD_LOADROM.
+  php
+  sep #$20 : .as
+  lda #CMD_LOAD_WITH_PARMK3
+  jsr game_handshake
+  plp
+  rtl
+
 set_selected_as_autoboot_rom:
 ; have MCU save the currently selected file as the autoboot ROM
 ; the file path should already have been saved to MCU_PARAM before calling
