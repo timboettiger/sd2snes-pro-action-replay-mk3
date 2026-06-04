@@ -65,6 +65,13 @@ extern cfg_t CFG;
 extern snes_status_t STS;
 extern mcu_status_t STM;
 
+/* Pro Action Replay MK3 wrapper file paths. SAVE_BASEDIR is `("/sd2snes/saves/")`
+ * with parens that block string-literal concatenation, so the .srm path is
+ * inlined. Defined here (not next to the parmk3 functions further down) so
+ * load_rom() above can reference them. */
+#define PARMK3_BIOS_FILE ((uint8_t*)"/sd2snes/par_mk3.bin")
+#define PARMK3_SAVE_FILE ((uint8_t*)"/sd2snes/saves/par_mk3.srm")
+
 void sram_hexdump(uint32_t addr, uint32_t len) {
   static uint8_t buf[16];
   uint32_t ptr;
@@ -356,6 +363,37 @@ uint32_t load_rom(uint8_t* filename, uint32_t base_addr, uint8_t flags) {
   }
   uart_putc('\n');
   file_close();
+
+  /* PAR MK3: load the 128 KB BIOS into its PSRAM region *here*, at the same
+   * point the game image was just streamed. The SNES is parked in its WRAM
+   * handshake routine right now and is NOT fetching from PSRAM, so the
+   * SD-DMA does not starve the running menu's instruction fetches. Doing
+   * this earlier (while the menu ROM still executes from PSRAM 0xC00000)
+   * wedges the bus and the cart freezes at "Loading...". */
+  if((flags & LOADROM_WITH_PARMK3) && romprops.has_par_mk3) {
+    printf("PAR MK3: loading BIOS %s\n", PARMK3_BIOS_FILE);
+    set_mcu_addr(SRAM_PARMK3_BIOS_ADDR);
+    file_open(PARMK3_BIOS_FILE, FA_READ);
+    if(file_res) {
+      printf("PAR MK3: BIOS load failed (err=%d)\n", file_res);
+      STM.parmk3_bios_loaded = 0;
+    } else {
+      for(;;) {
+        ff_sd_offload = 1;
+        sd_offload_tgt = 0;
+        bytes_read = file_read();
+        if(file_res || !bytes_read) break;
+      }
+      file_close();
+      STM.parmk3_bios_loaded = 1;
+    }
+    /* MK3 cartridge SRAM (32 KB) -- same safe window. Init to 0xFF so the
+     * BIOS sees a cold-boot ($ABCD warm-boot magic absent), then overlay any
+     * persisted .srm. */
+    sram_memset(SRAM_PARMK3_MK3RAM_ADDR, SRAM_PARMK3_MK3RAM_SIZE, 0xFF);
+    load_sram_offload(PARMK3_SAVE_FILE, SRAM_PARMK3_MK3RAM_ADDR, 0);
+    if(file_res == FR_NO_FILE) file_res = 0;
+  }
 
   printf("rom header map: %02x; mapper id: %d\n", romprops.header.map, romprops.mapper_id);
   ticks_total=getticks()-ticksstart;
@@ -950,11 +988,6 @@ void load_dspx(const uint8_t *filename, uint8_t coretype) {
 
 /* ----- Pro Action Replay MK3 wrapper ----------------------------------- */
 
-#define PARMK3_BIOS_FILE ((uint8_t*)"/sd2snes/par_mk3.bin")
-/* SAVE_BASEDIR is `("/sd2snes/saves/")` -- the parens block string-literal
- * concatenation. Inline the path here instead. */
-#define PARMK3_SAVE_FILE ((uint8_t*)"/sd2snes/saves/par_mk3.srm")
-
 uint32_t load_parmk3_bios(void) {
   printf("PAR MK3: loading BIOS %s\n", PARMK3_BIOS_FILE);
   set_mcu_addr(SRAM_PARMK3_BIOS_ADDR);
@@ -1006,15 +1039,19 @@ void save_parmk3_sram(uint8_t* gamefile) {
 }
 
 uint32_t load_with_parmk3(uint8_t* gamefile) {
-  /* The wrapper is only meaningful if the BIOS dump is present. Probe first
-   * so we can refuse early and avoid a half-configured FPGA state. The menu
-   * loader pre-arms LOADROM_WAIT_SNES on the regular flow, so we mirror that
-   * here -- otherwise the FPGA reconfig races the running menu code. */
-  if(!load_parmk3_bios()) {
-    printf("PAR MK3: refusing to wrap %s (no BIOS)\n", gamefile);
+  /* The wrapper is only meaningful if the BIOS dump is present. Probe its
+   * existence first (a FAT lookup only -- NO PSRAM DMA, so it does not
+   * disturb the running menu ROM). The actual 128 KB BIOS DMA happens
+   * inside load_rom(), after the WAIT_SNES handshake, where the SNES is
+   * parked off the PSRAM bus. */
+  file_open(PARMK3_BIOS_FILE, FA_READ);
+  if(file_res) {
+    printf("PAR MK3: refusing to wrap %s (no BIOS, err=%d)\n", gamefile, file_res);
+    file_res = 0;
     STM.parmk3_wrapper_active = 0;
     return 0;
   }
+  file_close();
   uint32_t res = load_rom(gamefile,
                           SRAM_ROM_ADDR,
                           LOADROM_WITH_SRAM
@@ -1026,7 +1063,8 @@ uint32_t load_with_parmk3(uint8_t* gamefile) {
     STM.parmk3_wrapper_active = 0;
     return 0;
   }
-  load_parmk3_sram(gamefile);
+  /* BIOS + MK3 SRAM were already loaded inside load_rom() at the safe point.
+   * Just arm the wrapper FSM in MK3-menu mode with a cart present. */
   fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 0, 1);
   STM.parmk3_wrapper_active = 1;
   return res;
