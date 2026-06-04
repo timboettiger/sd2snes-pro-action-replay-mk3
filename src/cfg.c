@@ -47,6 +47,7 @@ cfg_t CFG_DEFAULT = {
   .sgb_enh_override = 0,
   .sgb_clock_fix = 1,
   .sgb_bios_version = 2,
+  .show_tribute = 0,                /* reserved padding (see cfg.h) */
   .enable_autosave = 1,
   .enable_autosave_msu1 = 1,
   .enable_par = 0,

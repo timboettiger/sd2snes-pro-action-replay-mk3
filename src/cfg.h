@@ -96,6 +96,11 @@ typedef struct __attribute__ ((__packed__)) _cfg_block {
   uint8_t  sgb_spr_increase;        /* SGB increase number of supported visible sprites */
   uint8_t  sgb_clock_fix;           /* SGB timing/clock (true: original/sgb2, false: snes/sgb1) */
   uint8_t  sgb_bios_version;        /* SGB bios firmware version (defined number loads: sgbX_boot.bin and sgbX_snes.bin) */
+  uint8_t  show_tribute;            /* RESERVED: tribute screen was removed in 30d2ca6 but
+                                       snes/memmap.i65 still maps CFG_SHOW_TRIBUTE at +0xB3.
+                                       This padding byte keeps the C struct and the SNES-side
+                                       offsets byte-aligned -- removing it shifts every field
+                                       after it by one, which silently mis-reads enable_par. */
   uint8_t  enable_autosave;         /* enable automatic saving when SRAM contents change */
   uint8_t  enable_autosave_msu1;    /* enable opportunistic auto saving when SRAM contents change for MSU1 games */
   /* Pro Action Replay MK3 wrapper. enable_par turns off the internal sd2snes

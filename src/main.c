@@ -302,10 +302,16 @@ int main(void) {
        * card), every regular ROM-load path transparently runs through the
        * wrapper instead. SNES_CMD_LOAD_WITH_PARMK3 still exists as the
        * explicit-override entry point for programmatic callers (USB tools,
-       * scripted launches). */
+       * scripted launches).
+       *
+       * cfg_get_from_menu() pulls the live WRAM-mirror values into the ARM
+       * CFG struct. Without this, the user has to hit "Save Config"
+       * before the enable_par toggle takes effect; pulling the mirror at
+       * every ROM-load entry point makes the toggle behave immediately. */
 #define PARMK3_ROUTING_ACTIVE() (CFG.enable_par && STM.parmk3_bios_loaded)
       switch(cmd) {
         case SNES_CMD_LOADROM:
+          cfg_get_from_menu();
           get_selected_name(file_lfn);
           printf("Selected name: %s\n", file_lfn);
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
@@ -316,6 +322,7 @@ int main(void) {
           }
           break;
         case SNES_CMD_LOAD_WITH_PARMK3:
+          cfg_get_from_menu();
           get_selected_name(file_lfn);
           printf("PAR MK3 wrap (explicit): %s\n", file_lfn);
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
@@ -352,6 +359,7 @@ int main(void) {
           cmd=0; /* stay in menu loop */
           break;
         case SNES_CMD_LOADLAST:
+          cfg_get_from_menu();
           cfg_get_listed_game(LAST_FILE, file_lfn, snes_get_mcu_param() & 0xff);
           printf("Selected name: %s\n", file_lfn);
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
@@ -362,6 +370,7 @@ int main(void) {
           }
           break;
         case SNES_CMD_LOADFAVORITE:
+          cfg_get_from_menu();
           cfg_get_listed_game(FAVORITES_FILE, file_lfn, snes_get_mcu_param() & 0xff);
           printf("Selected name: %s\n", file_lfn);
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
