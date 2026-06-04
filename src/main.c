@@ -329,7 +329,7 @@ int main(void) {
           filesize = load_with_parmk3(file_lfn);
           break;
         case SNES_CMD_PARMK3_TO_MENU:
-          fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 1, 1);
+          fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 1, 1, CFG.parmk3_trainer_button);
           cmd = 0; /* stay in menu loop */
           break;
         case SNES_CMD_SETRTC:
@@ -620,19 +620,19 @@ int main(void) {
                  * have nudged its internal cheat_enable flag, but that flag
                  * is harmless while parmk3 is routing (no slots programmed). */
                 if(STM.parmk3_wrapper_active && CFG.enable_par && STM.parmk3_bios_loaded) {
-                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_CHEATS, 0, 1);
+                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_CHEATS, 0, 1, CFG.parmk3_trainer_button);
                 }
                 break;
               case SNES_CMD_DISABLE_CHEATS:
                 usb_cmd = 0;
                 if(STM.parmk3_wrapper_active && CFG.enable_par && STM.parmk3_bios_loaded) {
-                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_NOCHEATS, 0, 1);
+                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_NOCHEATS, 0, 1, CFG.parmk3_trainer_button);
                 }
                 break;
               case SNES_CMD_PARMK3_TO_MENU:
                 usb_cmd = 0;
                 if(STM.parmk3_wrapper_active && STM.parmk3_bios_loaded) {
-                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 1, 1);
+                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 1, 1, CFG.parmk3_trainer_button);
                 }
                 break;
               default:

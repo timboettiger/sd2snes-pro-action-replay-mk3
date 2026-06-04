@@ -507,10 +507,11 @@ void fpga_set_chipfeat(uint16_t feat) {
   FPGA_DESELECT();
 }
 
-void fpga_set_parmk3_ctrl(uint8_t switch_pos, uint8_t par_menu, uint8_t game_loaded) {
+void fpga_set_parmk3_ctrl(uint8_t switch_pos, uint8_t par_menu, uint8_t game_loaded, uint8_t trainer_button) {
   uint8_t payload = (switch_pos & 0x03)
-                  | ((par_menu    ? 1 : 0) << 2)
-                  | ((game_loaded ? 1 : 0) << 3);
+                  | ((par_menu       ? 1 : 0) << 2)
+                  | ((game_loaded    ? 1 : 0) << 3)
+                  | ((trainer_button ? 1 : 0) << 4);
   FPGA_SELECT();
   FPGA_TX_BYTE(FPGA_CMD_PARMK3_CTRL);
   FPGA_TX_BYTE(payload);

@@ -114,6 +114,7 @@ module mcu_cmd(
   output reg [1:0] parmk3_switch_pos_out,
   output reg parmk3_par_menu_out,
   output reg parmk3_game_loaded_out,
+  output reg parmk3_trainer_button_out,   // 0 = Select, 1 = Start
 
   // PAR MK3 wrapper status read-back (FPGA_CMD_PARMK3_STATUS = 0xdf)
   // Driven from parmk3_top via main.v.
@@ -128,6 +129,7 @@ initial begin
   parmk3_switch_pos_out = 2'd2;   // start in MK3_MENU mode
   parmk3_par_menu_out = 1'b0;
   parmk3_game_loaded_out = 1'b0;
+  parmk3_trainer_button_out = 1'b0;  // default Select (matches real MK3)
 end
 
 wire [31:0] snes_sysclk_freq;
@@ -408,10 +410,12 @@ always @(posedge clk) begin
          *   bits [1:0] = switch_pos (0=NoCheats, 1=Cheats, 2=MK3 Menu)
          *   bit  [2]   = par_menu pulse (one-shot back to MK3 Menu)
          *   bit  [3]   = game_loaded flag
+         *   bit  [4]   = trainer button (0=Select, 1=Start) for live combo
          */
-        parmk3_switch_pos_out  <= param_data[1:0];
-        parmk3_par_menu_out    <= param_data[2];
-        parmk3_game_loaded_out <= param_data[3];
+        parmk3_switch_pos_out     <= param_data[1:0];
+        parmk3_par_menu_out       <= param_data[2];
+        parmk3_game_loaded_out    <= param_data[3];
+        parmk3_trainer_button_out <= param_data[4];
       end
       8'hfa: // handles all group, index, value, invmask writes.  unit is responsible for decoding group for match
         case (spi_byte_cnt)

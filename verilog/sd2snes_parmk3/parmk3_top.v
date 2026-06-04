@@ -27,10 +27,16 @@ module parmk3_top(
   input  cpu_we,
   input  [7:0]  bus_data,
 
+  /* Controller snoop (live cheat toggle) */
+  input  [7:0]  snes_data_in,    // read data, valid at snes_rd_end
+  input  snes_rd_end,
+  input  snes_wr_end,
+
   /* MCU control */
   input  [1:0]  mcu_switch_pos,
   input  mcu_par_menu,
   input  mcu_game_loaded,
+  input  mcu_trainer_button,     // 0 = Select, 1 = Start
 
   /* Memory selectors */
   output sel_mk3_bios,
@@ -56,6 +62,9 @@ wire [7:0]  io_dout;
 wire        io_hit;
 wire [1:0]  fsm_state;
 wire        force_cb, clear_cb;
+wire        cheat_on_pulse, cheat_off_pulse;
+reg  [1:0]  eff_switch;
+reg  [1:0]  mcu_switch_prev;
 
 parmk3_io u_io(
   .CLK(CLK),
@@ -86,18 +95,54 @@ parmk3_fsm u_fsm(
   .clear_control_b(clear_cb)
 );
 
+// Controller snoop: live cheat toggle via the trainer-button combo.
+parmk3_pad_snoop u_pad(
+  .CLK(CLK),
+  .RST_N(RST_N),
+  .SNES_ADDR(SNES_ADDR),
+  .SNES_DATA(snes_data_in),
+  .rd_strobe(snes_rd_end),
+  .wr_strobe(snes_wr_end),
+  .enable(control_b),                 // only while the game runs
+  .trainer_button(mcu_trainer_button),
+  .cheat_on_pulse(cheat_on_pulse),
+  .cheat_off_pulse(cheat_off_pulse)
+);
+
+// Effective switch fed to the mapper. The MCU owns the baseline (game load,
+// PARMK3_TO_MENU, USB CMD_ENABLE/DISABLE_CHEATS); the in-game trainer combo
+// nudges it between CHEATS_ACTIVE(1) and NO_CHEATS(0) without a reset, since
+// both game modes share the same memory map and only toggle the interceptor.
+// While the BIOS menu runs (control_b==0) eff_switch tracks the MCU default,
+// so every fresh "Start Game" begins from the configured baseline and a stale
+// combo state never carries into the next launch.
+always @(posedge CLK or negedge RST_N) begin
+  if (!RST_N) begin
+    eff_switch      <= 2'd2;          // MK3_MENU
+    mcu_switch_prev <= 2'd2;
+  end else begin
+    mcu_switch_prev <= mcu_switch_pos;
+    if (!control_b)
+      eff_switch <= mcu_switch_pos;   // BIOS menu: follow MCU baseline
+    else if (mcu_switch_pos != mcu_switch_prev)
+      eff_switch <= mcu_switch_pos;   // explicit MCU reprogram during game
+    else if (cheat_on_pulse)
+      eff_switch <= 2'd1;             // CHEATS_ACTIVE
+    else if (cheat_off_pulse)
+      eff_switch <= 2'd0;             // NO_CHEATS
+  end
+end
+
 parmk3_mapper u_mapper(
   .CLK(CLK),
-  // Raw MCU switch, NOT the FSM state — matches the openFPGA reference
-  // (mk3_snes_top.sv: both u_fsm and u_map take bridge_switch_pos). The
-  // mapper derives effective_mode from (switch_pos, control_b): while the
-  // BIOS menu runs control_b==0 so every switch position resolves to MENU;
-  // when the BIOS latches Control B on "Start Game", switch_pos==2 (MENU,
-  // the firmware default) resolves to CHEATS_ACTIVE because it is non-zero.
-  // The re-routed CMD_ENABLE/DISABLE_CHEATS move switch_pos to 1/0 to flip
-  // cheats on/off live. Feeding fsm_state here instead left the mapper stuck
-  // in NO_CHEATS because the FSM swallows the control_b pulse at switch==2.
-  .switch_pos(mcu_switch_pos),
+  // Effective switch (MCU default + live combo toggle), NOT the FSM state —
+  // matches the openFPGA reference (mk3_snes_top.sv feeds bridge_switch_pos to
+  // the mapper). The mapper derives effective_mode from (switch_pos, control_b):
+  // while the BIOS menu runs control_b==0 so every position resolves to MENU;
+  // when the BIOS latches Control B on "Start Game", switch_pos==2 (MENU, the
+  // firmware default) resolves to CHEATS_ACTIVE because it is non-zero. The
+  // trainer combo then moves it to 1/0 to flip cheats on/off live.
+  .switch_pos(eff_switch),
   .control_b(control_b),
   .control_a(control_a),
   .SNES_ADDR(SNES_ADDR),

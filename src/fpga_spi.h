@@ -159,7 +159,7 @@ void fpga_set_snescmd_addr(uint16_t addr);
 void fpga_write_snescmd(uint8_t data);
 uint8_t fpga_read_snescmd(void);
 void fpga_write_cheat(uint8_t index, uint32_t code);
-void fpga_set_parmk3_ctrl(uint8_t switch_pos, uint8_t par_menu, uint8_t game_loaded);
+void fpga_set_parmk3_ctrl(uint8_t switch_pos, uint8_t par_menu, uint8_t game_loaded, uint8_t trainer_button);
 uint8_t fpga_get_parmk3_status(void);
 void fpga_set_chipfeat(uint16_t feat);
 uint8_t fpga_read_config(uint8_t group, uint8_t index);

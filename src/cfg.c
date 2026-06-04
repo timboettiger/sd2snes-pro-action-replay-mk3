@@ -51,7 +51,8 @@ cfg_t CFG_DEFAULT = {
   .enable_autosave = 1,
   .enable_autosave_msu1 = 1,
   .enable_par = 0,
-  .parmk3_led_visible = 1
+  .parmk3_led_visible = 1,
+  .parmk3_trainer_button = 0        /* Select (matches real MK3 default) */
 };
 
 cfg_t CFG;
@@ -158,6 +159,8 @@ int cfg_save() {
   f_printf(&file_handle, "%s: %s\n", CFG_ENABLE_PAR, CFG.enable_par ? "true" : "false");
   f_printf(&file_handle, "#  %s: mirror MK3 cart LEDs onto the sd2snes hardware LEDs\n", CFG_PARMK3_LED_VISIBLE);
   f_printf(&file_handle, "%s: %s\n", CFG_PARMK3_LED_VISIBLE, CFG.parmk3_led_visible ? "true" : "false");
+  f_printf(&file_handle, "#  %s: in-game cheat-toggle combo modifier (false=Select+L/R, true=Start+L/R)\n", CFG_PARMK3_TRAINER_BUTTON);
+  f_printf(&file_handle, "%s: %s\n", CFG_PARMK3_TRAINER_BUTTON, CFG.parmk3_trainer_button ? "true" : "false");
   file_close();
   return err;
 }
@@ -292,6 +295,9 @@ int cfg_load() {
     }
     if(yaml_get_itemvalue(CFG_PARMK3_LED_VISIBLE, &tok)) {
       CFG.parmk3_led_visible = tok.boolvalue ? 1 : 0;
+    }
+    if(yaml_get_itemvalue(CFG_PARMK3_TRAINER_BUTTON, &tok)) {
+      CFG.parmk3_trainer_button = tok.boolvalue ? 1 : 0;
     }
   }
   yaml_file_close();
