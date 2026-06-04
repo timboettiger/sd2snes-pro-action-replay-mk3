@@ -55,11 +55,13 @@ jobs:
           (cd snescom-1.8.1.1 && make && sudo cp snescom sneslink /usr/local/bin/)
 
       - name: Build FPGA cores
+        env:
+          INTEL_BIN: /home/runner/intelFPGA_lite/18.1/quartus/bin
         run: |
           set -e
           make -C utils rle
-          ( cd verilog/sd2snes_parmk3 && make mk3 )
-          ( cd verilog/sd2snes_mini   && make mk3 )
+          ( cd verilog/sd2snes_parmk3 && make INTEL_BIN="$INTEL_BIN" mk3 )
+          ( cd verilog/sd2snes_mini   && make INTEL_BIN="$INTEL_BIN" mk3 )
 
       - name: Build SNES menu
         run: make -C snes
