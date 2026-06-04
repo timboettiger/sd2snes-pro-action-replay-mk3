@@ -37,6 +37,14 @@ extern char current_filename[];
 #define SRAM_ROM_ADDR                (0x000000L)
 #define SRAM_SAVE_ADDR               (0xE00000L)
 
+/* Pro Action Replay MK3 wrapper memories.
+ * BIOS:    128 KB ROM image, kept resident while wrapper is active.
+ * MK3 SRAM: 32 KB cartridge-side RAM (mapped at $00/02/04/06:6000-7FFF). */
+#define SRAM_PARMK3_BIOS_ADDR        (0xB00000L)
+#define SRAM_PARMK3_BIOS_SIZE        (0x20000L)
+#define SRAM_PARMK3_MK3RAM_ADDR      (0xB20000L)
+#define SRAM_PARMK3_MK3RAM_SIZE      (0x8000L)
+
 #define SRAM_MENU_ADDR               (0xC00000L)
 #define SRAM_DIR_ADDR                (0xC10000L)
 #define SRAM_DB_ADDR                 (0xC80000L)
@@ -68,6 +76,7 @@ extern char current_filename[];
 #define LOADROM_WAIT_SNES   (4)
 #define LOADROM_WITH_FPGA   (8)
 #define LOADROM_WITH_COMBO  (16)
+#define LOADROM_WITH_PARMK3 (32)
 
 #define LOADRAM_AUTOSKIP_HEADER (1)
 
@@ -79,6 +88,10 @@ extern char current_filename[];
  _a < _b ? _a : _b; })
 
 uint32_t load_rom(uint8_t* filename, uint32_t base_addr, uint8_t flags);
+uint32_t load_with_parmk3(uint8_t* gamefile);
+uint32_t load_parmk3_bios(void);
+void save_parmk3_sram(uint8_t* gamefile);
+uint32_t load_parmk3_sram(uint8_t* gamefile);
 void assert_reset(void);
 void init(uint8_t *filename);
 void deassert_reset(void);

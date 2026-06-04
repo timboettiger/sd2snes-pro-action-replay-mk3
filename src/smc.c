@@ -341,6 +341,24 @@ void smc_id(snes_romprops_t* props, uint32_t file_offset) {
   props->header_address = hdr_addr[score_idx] - props->offset;
 }
 
+/* Convert romprops produced by smc_id() into a Pro Action Replay MK3
+ * configuration. The MK3 wraps an arbitrary game cart, so this is invoked
+ * explicitly by the menu/loader path rather than from header inspection.
+ *
+ * After this returns, props points the FPGA at the parmk3 core and reserves
+ * the cartridge-side 32 KB SRAM. The original game's saveram parameters are
+ * preserved (the MK3 transparently passes them through to the game cart). */
+void parmk3_apply(snes_romprops_t* props) {
+  /* The parmk3 FPGA core is *always* the MK3 wrapper. The mapper_id stays as
+   * smc_id() detected it (LoROM=1, HiROM=0, ExHiROM=2, BS-X=3, SO96=6) — it
+   * tells the in-core game-ROM mapper how to address the wrapped cart.
+   * Only LoROM/HiROM are practically expected (the MK3 PCB had no support
+   * for the more exotic mappings), but the address logic forwards regardless. */
+  props->has_par_mk3 = 1;
+  props->par_mk3_sramsize_bytes = SRAM_PARMK3_MK3RAM_SIZE;
+  props->fpga_conf = FPGA_PARMK3;
+}
+
 uint8_t smc_headerscore(uint32_t addr, snes_header_t* header, uint32_t file_offset) {
   int score=0;
   uint8_t reset_inst;

@@ -87,6 +87,8 @@ typedef struct __attribute__ ((__packed__)) _snes_romprops {
   uint8_t has_sa1;            /* SA-1 presence flag */
   uint8_t has_sdd1;           /* S-DD1 presence flag */
   uint8_t has_spc7110;        /* SPC7110 presence flag */
+  uint8_t has_par_mk3;        /* Pro Action Replay MK3 wrapper active */
+  uint32_t par_mk3_sramsize_bytes; /* MK3 internal SRAM size (32 KB) */
   uint8_t has_combo;          /* Multi game presence flag */
   uint32_t srambase;          /* saveram base address */
   uint32_t sramsize_bytes;    /* saveram size in bytes */
@@ -102,5 +104,6 @@ typedef struct __attribute__ ((__packed__)) _snes_romprops {
 
 void smc_id(snes_romprops_t*, uint32_t file_offset);
 uint8_t smc_headerscore(uint32_t addr, snes_header_t* header, uint32_t file_offset);
+void parmk3_apply(snes_romprops_t* props);
 
 #endif
