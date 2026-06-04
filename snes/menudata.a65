@@ -82,6 +82,20 @@ menu_enttab_mm:
  .byt  0,0,0
  .byt  0,0,0
 
+ .byt  MTYPE_FUNC_CLOSE
+ .word !mtext_mm_parmk3
+ .byt  ^mtext_mm_parmk3
+ .word !mfunc_parmk3_to_menu-1
+ .byt  ^mfunc_parmk3_to_menu-1
+ .byt  0
+ .byt  0,0,0
+ .word !mdesc_mm_parmk3
+ .byt  ^mdesc_mm_parmk3
+ .byt  0,0,0
+ .byt  0,0,0
+ .word !(mfunc_isenabled_parmk3_run-1)
+ .byt  ^(mfunc_isenabled_parmk3_run-1)
+
  .byt  MTYPE_FUNC
  .word !mtext_mm_sysinfo
  .byt  ^mtext_mm_sysinfo
@@ -107,20 +121,6 @@ menu_enttab_mm:
  .byt  0,0,0
  .byt  0,0,0
  .byt  0,0,0
-
- .byt  MTYPE_FUNC_CLOSE
- .word !mtext_mm_parmk3
- .byt  ^mtext_mm_parmk3
- .word !mfunc_parmk3_to_menu-1
- .byt  ^mfunc_parmk3_to_menu-1
- .byt  0
- .byt  0,0,0
- .word !mdesc_mm_parmk3
- .byt  ^mdesc_mm_parmk3
- .byt  0,0,0
- .byt  0,0,0
- .word !(mfunc_isenabled_parmk3_run-1)
- .byt  ^(mfunc_isenabled_parmk3_run-1)
 
  .byt  0
 
