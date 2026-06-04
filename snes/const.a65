@@ -236,8 +236,8 @@ mtext_chip_cx4_speed              .byt "Cx4 speed", 0
 mtext_chip_gsu_speed              .byt "SuperFX speed", 0
 mtext_chip_msu1_volume_boost      .byt "MSU-1 volume boost", 0
 mtext_cfg_parmk3                  .byt "Pro Action Replay", 0
-mtext_parmk3_enable               .byt "Enable PAR MK3 wrapper", 0
-mtext_parmk3_led_visible          .byt " ",129,"Show LEDs overlay", 0
+mtext_parmk3_enable               .byt "Enable Pro Action Replay", 0
+mtext_parmk3_led_visible          .byt " ",129,"Show LEDs", 0
 mtext_parmk3_led_pos              .byt "  ",129,"LED position", 0
 mtext_mm_parmk3                   .byt "Pro Action Replay", 0
 text_topleft                      .byt "Top left", 0
