@@ -77,6 +77,11 @@ jobs:
       - name: Build SNES menu
         run: make -C snes
 
+      - name: Build src/utils/genhdr
+        # src/Makefile invokes utils/genhdr (relative to src/) when stamping
+        # the firmware header but never builds it; do it explicitly.
+        run: gcc -Wall -O2 -o src/utils/genhdr src/utils/genhdr.c
+
       - name: Build STM32 firmware
         run: make -C src CONFIG=config-mk3-stm32
 
