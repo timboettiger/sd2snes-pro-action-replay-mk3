@@ -276,13 +276,26 @@ def cmd_put(fd: int, local_path: str, remote_path: str) -> int:
     if resp_error(resp):
         raise IOError(f"PUT {remote_path} init failed, error=0x{resp_error(resp):02x}")
     time.sleep(0.2)
+    # Inter-block throttle: the firmware writes each 512-byte block to the SD
+    # card synchronously inside the USB data ISR. On multi-MB ROM uploads the
+    # host CDC stack can outrun the SD write speed; without throttling the
+    # transfer wedges (the firmware stops servicing OUT packets and os.write
+    # blocks forever). A short pause every PUT_THROTTLE_BYTES gives the card
+    # time to flush. ~32 KB / 4 ms keeps a 1.3 MB ROM well under 10 s while
+    # staying clear of the overflow.
+    PUT_THROTTLE_BYTES = 32 * 1024
     sent = 0
+    since_pause = 0
     while sent < size:
         chunk = data[sent:sent + BLOCK]
         if len(chunk) < BLOCK:
             chunk = chunk + b'\x00' * (BLOCK - len(chunk))
         write_all(fd, chunk)
         sent += BLOCK
+        since_pause += BLOCK
+        if since_pause >= PUT_THROTTLE_BYTES:
+            since_pause = 0
+            time.sleep(0.004)
     # Let the SD write + lock release finish before the caller fires the
     # next command. 200 ms per file is a tiny cost for small files; for
     # multi-megabyte uploads the actual write takes longer than the wait.

@@ -72,6 +72,11 @@ extern mcu_status_t STM;
 #define PARMK3_BIOS_FILE ((uint8_t*)"/sd2snes/par_mk3.bin")
 #define PARMK3_SAVE_FILE ((uint8_t*)"/sd2snes/saves/par_mk3.srm")
 
+/* DEBUG: write a progress stage to the unused status byte at 0xFF1108
+ * (SRAM_MCU_STATUS_ADDR + 8). Readable over USB via `read snes 0xFF1108 1`
+ * to locate exactly where the wrapper load wedges. Remove once stable. */
+#define PARMK3_DBG(n) sram_writebyte((n), SRAM_MCU_STATUS_ADDR + 8)
+
 void sram_hexdump(uint32_t addr, uint32_t len) {
   static uint8_t buf[16];
   uint32_t ptr;
@@ -322,24 +327,32 @@ uint32_t load_rom(uint8_t* filename, uint32_t base_addr, uint8_t flags) {
     fpga_set_features(fpga_features_preload);
     printf("OK.\n");
   }
+  if(flags & LOADROM_WITH_PARMK3) PARMK3_DBG(0x10);
   /* TODO check prerequisites and set error code here */
   if(flags & LOADROM_WAIT_SNES) {
     printf("Setting cmd=0x55...");
     snes_set_snes_cmd(0x55);
     printf("OK.\n");
   }
+  if(flags & LOADROM_WITH_PARMK3) PARMK3_DBG(0x11);
   /* reconfigure FPGA if necessary */
   if(flags & LOADROM_WAIT_SNES) {
     printf("Checking if ok to reconfigure...");
-    while(snes_get_mcu_cmd() != SNES_CMD_FPGA_RECONF);
+    /* DEBUG: poll USB while waiting so the stage byte stays readable if the
+     * SNES never sends FPGA_RECONF. */
+    while(snes_get_mcu_cmd() != SNES_CMD_FPGA_RECONF) {
+      if(flags & LOADROM_WITH_PARMK3) cli_entrycheck();
+    }
     printf("OK.\n");
   }
+  if(flags & LOADROM_WITH_PARMK3) PARMK3_DBG(0x12);
   if(romprops.fpga_conf || (flags & LOADROM_WITH_FPGA)) {
     const uint8_t *fpga_conf = romprops.fpga_conf ? romprops.fpga_conf : FPGA_BASE;
     printf("reconfigure FPGA with %s...\n", fpga_conf);
     fpga_pgm((uint8_t*)fpga_conf);
     fpga_set_features(fpga_features_preload);
   }
+  if(flags & LOADROM_WITH_PARMK3) PARMK3_DBG(0x13);
   if(flags & LOADROM_WAIT_SNES) snes_set_snes_cmd(0x77);
   set_mcu_addr(base_addr + romprops.load_address);
   file_open(filename, FA_READ);
@@ -371,6 +384,7 @@ uint32_t load_rom(uint8_t* filename, uint32_t base_addr, uint8_t flags) {
    * this earlier (while the menu ROM still executes from PSRAM 0xC00000)
    * wedges the bus and the cart freezes at "Loading...". */
   if((flags & LOADROM_WITH_PARMK3) && romprops.has_par_mk3) {
+    PARMK3_DBG(0x14);
     printf("PAR MK3: loading BIOS %s\n", PARMK3_BIOS_FILE);
     set_mcu_addr(SRAM_PARMK3_BIOS_ADDR);
     file_open(PARMK3_BIOS_FILE, FA_READ);
@@ -387,12 +401,14 @@ uint32_t load_rom(uint8_t* filename, uint32_t base_addr, uint8_t flags) {
       file_close();
       STM.parmk3_bios_loaded = 1;
     }
+    PARMK3_DBG(0x15);
     /* MK3 cartridge SRAM (32 KB) -- same safe window. Init to 0xFF so the
      * BIOS sees a cold-boot ($ABCD warm-boot magic absent), then overlay any
      * persisted .srm. */
     sram_memset(SRAM_PARMK3_MK3RAM_ADDR, SRAM_PARMK3_MK3RAM_SIZE, 0xFF);
     load_sram_offload(PARMK3_SAVE_FILE, SRAM_PARMK3_MK3RAM_ADDR, 0);
     if(file_res == FR_NO_FILE) file_res = 0;
+    PARMK3_DBG(0x16);
   }
 
   printf("rom header map: %02x; mapper id: %d\n", romprops.header.map, romprops.mapper_id);
@@ -552,9 +568,11 @@ uint32_t load_rom(uint8_t* filename, uint32_t base_addr, uint8_t flags) {
     romprops.fpga_features |= FEAT_SATELLABASE;
   }
 
+  if(flags & LOADROM_WITH_PARMK3) PARMK3_DBG(0x17);
   if(flags & LOADROM_WAIT_SNES) {
     while(snes_get_mcu_cmd() != SNES_CMD_RESET) cli_entrycheck();
   }
+  if(flags & LOADROM_WITH_PARMK3) PARMK3_DBG(0x18);
 
   set_mapper(sgb_romprops.has_sgb ? sgb_romprops.mapper_id : romprops.mapper_id);
 
@@ -583,11 +601,13 @@ uint32_t load_rom(uint8_t* filename, uint32_t base_addr, uint8_t flags) {
   }
 
 //printf("%04lx\n", romprops.header_address + ((void*)&romprops.header.vect_irq16 - (void*)&romprops.header));
+  if(flags & LOADROM_WITH_PARMK3) PARMK3_DBG(0x19);
   if(flags & (LOADROM_WITH_RESET|LOADROM_WAIT_SNES)) {
     assert_reset();
     init(filename);
     deassert_reset();
   }
+  if(flags & LOADROM_WITH_PARMK3) PARMK3_DBG(0x1a);
   // loading a new rom implies the previous crc is no longer valid
   sram_crc_valid = romprops.has_combo ? 1 : 0;
   sram_crc_init = 1;
