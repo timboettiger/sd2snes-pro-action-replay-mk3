@@ -1,0 +1,63 @@
+# Quartus 18.1 Lite on Ubuntu 18.04 (glibc 2.27) for Cyclone IV E builds.
+# The 18.1 toolchain segfaults at startup on Ubuntu 20.04+ (glibc 2.31)
+# regardless of LD_PRELOAD / libstdc++ tricks; 18.04 LTS works out of the box.
+# This image is intentionally separate from mk3-quartus so the 25.1 toolchain
+# (used for the openFPGA Pocket build, Cyclone V) stays untouched.
+
+FROM ubuntu:18.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Quartus runtime deps minus the X server bits; we never start the GUI.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        locales \
+        libglib2.0-0 \
+        libfontconfig1 \
+        libfreetype6 \
+        libxext6 \
+        libxrender1 \
+        libxtst6 \
+        libxi6 \
+        libsm6 \
+        libxkbcommon0 \
+        libdbus-1-3 \
+        libpng16-16 \
+        wget \
+        curl \
+        sudo \
+        unzip \
+        xz-utils \
+        perl \
+        python3 \
+        tzdata \
+        libc6-i386 \
+        libstdc++6 \
+    && locale-gen en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8
+
+COPY QuartusLiteSetup-18.1.0.625-linux.run /tmp/q18.run
+COPY cyclone-18.1.0.625.qdz                /tmp/cyclone-18.1.0.625.qdz
+RUN chmod +x /tmp/q18.run \
+    && /tmp/q18.run \
+            --mode unattended \
+            --unattendedmodeui none \
+            --installdir /opt/intelFPGA_lite/18.1 \
+            --accept_eula 1 \
+            --disable-components quartus_help,modelsim_ase,modelsim_ae \
+    && test -x /opt/intelFPGA_lite/18.1/quartus/bin/quartus_sh \
+    && mkdir -p /opt/intelFPGA_lite/18.1/quartus/devices \
+    && cp /tmp/cyclone-18.1.0.625.qdz /opt/intelFPGA_lite/18.1/quartus/devices/ \
+    && rm -f /tmp/q18.run /tmp/cyclone-18.1.0.625.qdz
+
+ENV QUARTUS_ROOTDIR=/opt/intelFPGA_lite/18.1/quartus
+ENV PATH=$QUARTUS_ROOTDIR/bin:$PATH
+
+RUN quartus_sh --version
+
+WORKDIR /work
+CMD ["bash"]

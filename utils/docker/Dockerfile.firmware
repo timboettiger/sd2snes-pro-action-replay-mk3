@@ -1,0 +1,72 @@
+# sd2snes firmware + SNES menu build container
+#
+# Two toolchains live here:
+#   ARM Cross-Compiler  : arm-none-eabi-gcc for the LPC1756/1768 firmware
+#                         (src/Makefile, config-mk3, builds firmware.im3)
+#   snescom / sneslink  : SNES 65816 assembler / linker for the SNES-side
+#                         menu (snes/Makefile, builds menu.bin / m3nu.bin)
+#
+# snescom is the Bisqwit toolchain referenced by snes/README; the upstream
+# source still hosts version 1.8.1.1 which is what the menu Makefile
+# expects. Built from source against libboost-all-dev.
+#
+# Build:
+#   docker build --platform=linux/amd64 -t sd2snes-firmware -f Dockerfile.firmware .
+#
+# Compile the firmware:
+#   docker run --rm -v $(pwd)/..:/work -w /work/src sd2snes-firmware \
+#     bash -c "make CONFIG=config-mk3"
+#
+# Compile the menu:
+#   docker run --rm -v $(pwd)/..:/work -w /work/snes sd2snes-firmware make
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        locales \
+        wget \
+        curl \
+        git \
+        build-essential \
+        make \
+        gcc-arm-none-eabi \
+        binutils-arm-none-eabi \
+        libnewlib-arm-none-eabi \
+        libstdc++-arm-none-eabi-newlib \
+        libboost-all-dev \
+        gperf \
+        perl \
+        python3 \
+        cpp \
+        xz-utils \
+        tzdata \
+    && locale-gen en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8
+
+# Build snescom 1.8.1.1 from source (Bisqwit's SNES 65816 assembler/linker).
+# The tarball is hosted on bisqwit.iki.fi; if the upstream URL ever moves
+# the mirror at https://github.com/bisqwit/snescom or
+# https://web.archive.org/web/* still has the source.
+RUN cd /tmp \
+    && wget --tries=3 --timeout=60 \
+        "https://bisqwit.iki.fi/src/arch/snescom-1.8.1.1.tar.gz" \
+        -O snescom.tar.gz \
+    && tar -xzf snescom.tar.gz \
+    && cd snescom-1.8.1.1 \
+    && make \
+    && cp snescom sneslink /usr/local/bin/ \
+    && cd / && rm -rf /tmp/snescom*
+
+RUN arm-none-eabi-gcc --version | head -1 \
+    && snescom --version 2>&1 | head -1 || true \
+    && sneslink --version 2>&1 | head -1 || true
+
+WORKDIR /work
+CMD ["bash"]
