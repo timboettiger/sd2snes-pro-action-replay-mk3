@@ -837,21 +837,6 @@ menu_enttab_parmk3:
  .word !(mfunc_isenabled_parmk3_bios-1)
  .byt  ^(mfunc_isenabled_parmk3_bios-1)
 
- .byt  MTYPE_VALUE
- .word !mtext_parmk3_led_pos
- .byt  ^mtext_parmk3_led_pos
- .word !kv_parmk3_led_pos
- .byt  ^kv_parmk3_led_pos
- .byt  OPTTYPE_KVBYTE
- .word !CFG_PARMK3_LED_POSITION
- .byt  ^CFG_PARMK3_LED_POSITION
- .word !mdesc_parmk3_led_pos
- .byt  ^mdesc_parmk3_led_pos
- .byt  0,0,0
- .byt  0,0,0
- .word !(mfunc_isenabled_parmk3_led-1)
- .byt  ^(mfunc_isenabled_parmk3_led-1)
-
  .byt 0
 
 menu_enttab_filesel_context_file:
@@ -1033,13 +1018,6 @@ mfunc_isenabled_parmk3_bios:
   ror
   rtl
 
-mfunc_isenabled_parmk3_led:
-  lda @ST_PARMK3_BIOS_LOADED
-  and @CFG_PARMK3_LED_VISIBLE
-  eor #$ff
-  ror
-  rtl
-
 mfunc_isenabled_parmk3_run:
   lda @ST_PARMK3_WRAPPER_ACTIVE
   and @ST_PARMK3_BIOS_LOADED
@@ -1104,13 +1082,6 @@ kv_vmode_noauto:
 kv_cx4_speed:
 .word $0000, !text_normal : .byt ^text_normal
 .word $0001, !text_fast : .byt ^text_fast
-.word $ffff
-
-kv_parmk3_led_pos:
-.word $0000, !text_topleft : .byt ^text_topleft
-.word $0001, !text_topright : .byt ^text_topright
-.word $0002, !text_botleft : .byt ^text_botleft
-.word $0003, !text_botright : .byt ^text_botright
 .word $ffff
 
 kv_gsu_speed:

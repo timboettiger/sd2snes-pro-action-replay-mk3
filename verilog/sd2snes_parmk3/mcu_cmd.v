@@ -113,7 +113,12 @@ module mcu_cmd(
   // PAR MK3 wrapper control (FPGA_CMD_PARMK3_CTRL = 0xde)
   output reg [1:0] parmk3_switch_pos_out,
   output reg parmk3_par_menu_out,
-  output reg parmk3_game_loaded_out
+  output reg parmk3_game_loaded_out,
+
+  // PAR MK3 wrapper status read-back (FPGA_CMD_PARMK3_STATUS = 0xdf)
+  // Driven from parmk3_top via main.v.
+  input [7:0] parmk3_leds_in,
+  input [1:0] parmk3_mode_in
 );
 
 initial begin
@@ -533,6 +538,14 @@ always @(posedge clk) begin
       endcase
     else if (cmd_data[7:0] == 8'hFF)
       MCU_DATA_IN_BUF <= param_data;
+    else if (cmd_data[7:0] == 8'hDF)
+      // FPGA_CMD_PARMK3_STATUS: one byte combining the live LED state
+      // (driven by the MK3 BIOS through Control-$086000) and the FSM's
+      // resolved mode. Layout:
+      //   bits [1:0] = LEDs (bit0 = left red, bit1 = right red)
+      //   bits [3:2] = effective_mode (0=Menu, 1=Cheats, 2=NoCheats)
+      //   bits [7:4] = reserved
+      MCU_DATA_IN_BUF <= {4'b0, parmk3_mode_in, parmk3_leds_in[1:0]};
     else if (cmd_data[7:0] == 8'hD1)
       MCU_DATA_IN_BUF <= snescmd_data_in;
     else if (cmd_data[7:0] == 8'hF9)

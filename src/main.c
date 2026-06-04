@@ -546,6 +546,26 @@ int main(void) {
         if(getticks() > loop_ticks + 25) {
           loop_ticks = getticks();
  //         sram_reliable();
+          /* Pro Action Replay MK3: mirror the MK3 cart LEDs onto the
+           * sd2snes hardware LEDs while the wrapper is active.
+           *   readled  (red)   <- MK3 left  LED  (bit0 of $086000)
+           *   writeled (gold)  <- MK3 right LED  (bit1)
+           *   rdyled   (green) <- FSM mode: solid=Cheats, blink=Menu, off=NoCheats
+           * Suppressed while MSU-1 streaming is active so we do not fight
+           * the SD-activity indicator. */
+          static uint8_t parmk3_blink_phase = 0;
+          if(STM.parmk3_wrapper_active && CFG.parmk3_led_visible && !romprops.has_msu1) {
+            uint8_t st = fpga_get_parmk3_status();
+            readled(st & 1);
+            writeled((st >> 1) & 1);
+            uint8_t mode = (st & PARMK3_STATUS_MODE_MASK) >> PARMK3_STATUS_MODE_SHIFT;
+            STM.parmk3_leds = st & PARMK3_STATUS_LEDS_MASK;
+            switch(mode) {
+              case 0: parmk3_blink_phase ^= 1; rdyled(parmk3_blink_phase); break; /* MENU */
+              case 1: rdyled(1); break;                                           /* CHEATS_ACTIVE */
+              default: rdyled(0); break;                                          /* NO_CHEATS */
+            }
+          }
           printf("%s ", get_cic_statename(get_cic_state()));
           cmd=snes_main_loop();
           if (usb_cmd && !cmd) cmd = usb_cmd;

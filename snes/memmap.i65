@@ -143,7 +143,6 @@
 #define CFG_ENABLE_AUTOSAVE_MSU1        CFG_ADDR+$00B5
 #define CFG_ENABLE_PAR                  CFG_ADDR+$00B6
 #define CFG_PARMK3_LED_VISIBLE          CFG_ADDR+$00B7
-#define CFG_PARMK3_LED_POSITION         CFG_ADDR+$00B8
 
 #define MENU_ENTRY_SIZE             23
 

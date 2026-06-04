@@ -676,7 +676,9 @@ mcu_cmd snes_mcu_cmd(
   .cheat_pgm_we_out(cheat_pgm_we),
   .parmk3_switch_pos_out(parmk3_switch_pos),
   .parmk3_par_menu_out(parmk3_par_menu),
-  .parmk3_game_loaded_out(parmk3_game_loaded)
+  .parmk3_game_loaded_out(parmk3_game_loaded),
+  .parmk3_leds_in(parmk3_leds),
+  .parmk3_mode_in(parmk3_mode)
 );
 
 address snes_addr(

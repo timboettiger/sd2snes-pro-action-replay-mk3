@@ -50,8 +50,7 @@ cfg_t CFG_DEFAULT = {
   .enable_autosave = 1,
   .enable_autosave_msu1 = 1,
   .enable_par = 0,
-  .parmk3_led_visible = 1,
-  .parmk3_led_position = 1   /* default: top-right */
+  .parmk3_led_visible = 1
 };
 
 cfg_t CFG;
@@ -156,10 +155,8 @@ int cfg_save() {
   f_puts("\n# Pro Action Replay MK3 wrapper (requires /sd2snes/par_mk3.bin)\n", &file_handle);
   f_printf(&file_handle, "#  %s: route Cheats/Trainer through the MK3 BIOS instead of the internal cheat engine\n", CFG_ENABLE_PAR);
   f_printf(&file_handle, "%s: %s\n", CFG_ENABLE_PAR, CFG.enable_par ? "true" : "false");
-  f_printf(&file_handle, "#  %s: draw MK3 LEDs as sprite overlay\n", CFG_PARMK3_LED_VISIBLE);
+  f_printf(&file_handle, "#  %s: mirror MK3 cart LEDs onto the sd2snes hardware LEDs\n", CFG_PARMK3_LED_VISIBLE);
   f_printf(&file_handle, "%s: %s\n", CFG_PARMK3_LED_VISIBLE, CFG.parmk3_led_visible ? "true" : "false");
-  f_printf(&file_handle, "#  %s: LED overlay position (0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right)\n", CFG_PARMK3_LED_POSITION);
-  f_printf(&file_handle, "%s: %d\n", CFG_PARMK3_LED_POSITION, CFG.parmk3_led_position);
   file_close();
   return err;
 }
@@ -294,9 +291,6 @@ int cfg_load() {
     }
     if(yaml_get_itemvalue(CFG_PARMK3_LED_VISIBLE, &tok)) {
       CFG.parmk3_led_visible = tok.boolvalue ? 1 : 0;
-    }
-    if(yaml_get_itemvalue(CFG_PARMK3_LED_POSITION, &tok)) {
-      CFG.parmk3_led_position = tok.longvalue & 0x3;
     }
   }
   yaml_file_close();

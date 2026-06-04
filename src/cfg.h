@@ -51,7 +51,6 @@
 #define CFG_ENABLE_AUTOSAVE_MSU1         ("EnableMSU1AutoSave")
 #define CFG_ENABLE_PAR                   ("EnablePAR")
 #define CFG_PARMK3_LED_VISIBLE           ("ParMK3LEDVisible")
-#define CFG_PARMK3_LED_POSITION          ("ParMK3LEDPosition")
 
 typedef enum {
   VIDMODE_60 = 0,
@@ -102,9 +101,8 @@ typedef struct __attribute__ ((__packed__)) _cfg_block {
   /* Pro Action Replay MK3 wrapper. enable_par turns off the internal sd2snes
    * cheat engine in favour of the MK3 BIOS's own Cheats/Trainer subsystem.
    * Only effective when the par_mk3.bin BIOS could be loaded at boot. */
-  uint8_t  enable_par;              /* route cheat commands to PAR MK3 BIOS */
-  uint8_t  parmk3_led_visible;      /* draw MK3 LEDs as overlay sprites */
-  uint8_t  parmk3_led_position;     /* 0=TL 1=TR 2=BL 3=BR */
+  uint8_t  enable_par;              /* every ROM launch wrapped by MK3 BIOS */
+  uint8_t  parmk3_led_visible;      /* mirror MK3 LEDs onto sd2snes hardware LEDs */
 } cfg_t;
 
 int cfg_save(void);

@@ -517,6 +517,15 @@ void fpga_set_parmk3_ctrl(uint8_t switch_pos, uint8_t par_menu, uint8_t game_loa
   FPGA_DESELECT();
 }
 
+uint8_t fpga_get_parmk3_status(void) {
+  uint8_t status;
+  FPGA_SELECT();
+  FPGA_TX_BYTE(FPGA_CMD_PARMK3_STATUS);
+  status = FPGA_TXRX_BYTE(0x00);
+  FPGA_DESELECT();
+  return status;
+}
+
 uint8_t fpga_read_config(uint8_t group, uint8_t index) {
   uint8_t data;
   FPGA_SELECT();
