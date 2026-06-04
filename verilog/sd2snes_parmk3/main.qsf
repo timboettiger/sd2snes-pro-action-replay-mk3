@@ -522,6 +522,12 @@ set_global_assignment -name VERILOG_FILE clk_test.v
 set_global_assignment -name VERILOG_FILE cheat.v
 set_global_assignment -name VERILOG_FILE bsx.v
 set_global_assignment -name VERILOG_FILE address.v
+set_global_assignment -name VERILOG_FILE parmk3_top.v
+set_global_assignment -name VERILOG_FILE parmk3_mapper.v
+set_global_assignment -name VERILOG_FILE parmk3_io.v
+set_global_assignment -name VERILOG_FILE parmk3_intercept.v
+set_global_assignment -name VERILOG_FILE parmk3_nmi_hook.v
+set_global_assignment -name VERILOG_FILE parmk3_fsm.v
 set_global_assignment -name QIP_FILE pll.qip
 set_global_assignment -name QIP_FILE snescmd_buf.qip
 set_global_assignment -name QIP_FILE msu_databuf.qip

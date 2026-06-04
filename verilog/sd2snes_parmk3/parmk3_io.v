@@ -63,10 +63,15 @@ wire [1:0] slot_byte  = SNES_ADDR[1:0];
 assign cpu_hit  = is_slot | is_ca | is_cb | is_cc | is_cd | is_led;
 assign cpu_dout = 8'h00;
 
-integer i;
 always @(posedge CLK or negedge RST_N) begin
   if (!RST_N) begin
-    for (i = 0; i < 7; i = i + 1) slot_r[i] <= 32'h0;
+    slot_r[0] <= 32'h0;
+    slot_r[1] <= 32'h0;
+    slot_r[2] <= 32'h0;
+    slot_r[3] <= 32'h0;
+    slot_r[4] <= 32'h0;
+    slot_r[5] <= 32'h0;
+    slot_r[6] <= 32'h0;
     ca_r     <= 8'h0;
     cb_r     <= 1'b0;
     cc_r     <= 8'h0;
