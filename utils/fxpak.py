@@ -234,9 +234,25 @@ def cmd_ls(fd: int, remote_dir: str) -> list:
     return entries
 
 
+# ---- Device auto-detect ----------------------------------------------------
+
+import glob
+
+def autodetect_dev() -> Optional[str]:
+    """Pick the first /dev/cu.usbmodem* that looks like an sd2snes / FX Pak.
+
+    macOS exposes USB CDC devices as /dev/cu.usbmodem<serial>. There is no
+    cheap way to distinguish an FX Pak from any other CDC ACM device without
+    poking it; we just return the first match and let the actual `info`
+    call fail loudly if it is the wrong device.
+    """
+    candidates = sorted(glob.glob('/dev/cu.usbmodem*'))
+    return candidates[0] if candidates else None
+
+
 # ---- CLI -------------------------------------------------------------------
 
-DEFAULT_DEV = '/dev/cu.usbmodemDEMO000000001'
+DEFAULT_DEV = autodetect_dev() or '/dev/cu.usbmodem'
 
 
 def main() -> int:
