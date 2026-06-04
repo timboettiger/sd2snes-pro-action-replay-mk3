@@ -63,6 +63,7 @@ extern uint8_t sram_crc_init;
 extern uint32_t sram_crc_romsize;
 extern cfg_t CFG;
 extern snes_status_t STS;
+extern mcu_status_t STM;
 
 void sram_hexdump(uint32_t addr, uint32_t len) {
   static uint8_t buf[16];
@@ -275,9 +276,12 @@ uint32_t load_rom(uint8_t* filename, uint32_t base_addr, uint8_t flags) {
 
   /* Pro Action Replay MK3 wraps an arbitrary game; redirect the FPGA core
    * after smc_id() has populated the standard properties. parmk3_apply()
-   * overrides fpga_conf and mapper_id but keeps the game's saveram setup. */
+   * overrides fpga_conf and mapper_id but keeps the game's saveram setup.
+   * Loads without the flag implicitly leave the wrapper. */
   if(flags & LOADROM_WITH_PARMK3) {
     parmk3_apply(&romprops);
+  } else {
+    STM.parmk3_wrapper_active = 0;
   }
 
   if(flags & LOADROM_WITH_COMBO) {
@@ -945,6 +949,7 @@ uint32_t load_parmk3_bios(void) {
   file_open(PARMK3_BIOS_FILE, FA_READ);
   if(file_res) {
     printf("PAR MK3: BIOS not found (err=%d)\n", file_res);
+    STM.parmk3_bios_loaded = 0;
     return 0;
   }
   uint32_t filesize = file_handle.fsize;
@@ -962,7 +967,12 @@ uint32_t load_parmk3_bios(void) {
     if(file_res || !bytes_read) break;
   }
   file_close();
+  STM.parmk3_bios_loaded = 1;
   return filesize;
+}
+
+uint8_t parmk3_bios_available(void) {
+  return STM.parmk3_bios_loaded;
 }
 
 uint32_t load_parmk3_sram(uint8_t* gamefile) {
@@ -984,16 +994,25 @@ void save_parmk3_sram(uint8_t* gamefile) {
 }
 
 uint32_t load_with_parmk3(uint8_t* gamefile) {
+  /* The wrapper is only meaningful if the BIOS dump is present. Probe first
+   * so we can refuse early and avoid a half-configured FPGA state. */
+  if(!load_parmk3_bios()) {
+    printf("PAR MK3: refusing to wrap %s (no BIOS)\n", gamefile);
+    STM.parmk3_wrapper_active = 0;
+    return 0;
+  }
   uint32_t res = load_rom(gamefile,
                           SRAM_ROM_ADDR,
                           LOADROM_WITH_SRAM
                         | LOADROM_WITH_RESET
                         | LOADROM_WITH_FPGA
                         | LOADROM_WITH_PARMK3);
-  if(!res) return 0;
-  load_parmk3_bios();
+  if(!res) {
+    STM.parmk3_wrapper_active = 0;
+    return 0;
+  }
   load_parmk3_sram(gamefile);
-  /* Tell the FPGA wrapper that a cart is present and arm the MK3 menu. */
   fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 0, 1);
+  STM.parmk3_wrapper_active = 1;
   return res;
 }

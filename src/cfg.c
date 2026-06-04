@@ -48,7 +48,10 @@ cfg_t CFG_DEFAULT = {
   .sgb_clock_fix = 1,
   .sgb_bios_version = 2,
   .enable_autosave = 1,
-  .enable_autosave_msu1 = 1
+  .enable_autosave_msu1 = 1,
+  .enable_par = 0,
+  .parmk3_led_visible = 1,
+  .parmk3_led_position = 1   /* default: top-right */
 };
 
 cfg_t CFG;
@@ -150,6 +153,13 @@ int cfg_save() {
   f_printf(&file_handle, "%s: %s\n", CFG_ENABLE_AUTOSAVE, CFG.enable_autosave ? "true" : "false");
   f_printf(&file_handle, "#  %s: Opportunistic Autosave for MSU-1 games\n", CFG_ENABLE_AUTOSAVE_MSU1);
   f_printf(&file_handle, "%s: %s\n", CFG_ENABLE_AUTOSAVE_MSU1, CFG.enable_autosave_msu1 ? "true" : "false");
+  f_puts("\n# Pro Action Replay MK3 wrapper (requires /sd2snes/par_mk3.bin)\n", &file_handle);
+  f_printf(&file_handle, "#  %s: route Cheats/Trainer through the MK3 BIOS instead of the internal cheat engine\n", CFG_ENABLE_PAR);
+  f_printf(&file_handle, "%s: %s\n", CFG_ENABLE_PAR, CFG.enable_par ? "true" : "false");
+  f_printf(&file_handle, "#  %s: draw MK3 LEDs as sprite overlay\n", CFG_PARMK3_LED_VISIBLE);
+  f_printf(&file_handle, "%s: %s\n", CFG_PARMK3_LED_VISIBLE, CFG.parmk3_led_visible ? "true" : "false");
+  f_printf(&file_handle, "#  %s: LED overlay position (0=top-left, 1=top-right, 2=bottom-left, 3=bottom-right)\n", CFG_PARMK3_LED_POSITION);
+  f_printf(&file_handle, "%s: %d\n", CFG_PARMK3_LED_POSITION, CFG.parmk3_led_position);
   file_close();
   return err;
 }
@@ -278,6 +288,15 @@ int cfg_load() {
     }
     if(yaml_get_itemvalue(CFG_ENABLE_AUTOSAVE_MSU1, &tok)) {
       CFG.enable_autosave_msu1 = tok.boolvalue ? 1 : 0;
+    }
+    if(yaml_get_itemvalue(CFG_ENABLE_PAR, &tok)) {
+      CFG.enable_par = tok.boolvalue ? 1 : 0;
+    }
+    if(yaml_get_itemvalue(CFG_PARMK3_LED_VISIBLE, &tok)) {
+      CFG.parmk3_led_visible = tok.boolvalue ? 1 : 0;
+    }
+    if(yaml_get_itemvalue(CFG_PARMK3_LED_POSITION, &tok)) {
+      CFG.parmk3_led_position = tok.longvalue & 0x3;
     }
   }
   yaml_file_close();

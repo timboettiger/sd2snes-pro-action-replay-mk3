@@ -268,6 +268,13 @@ int main(void) {
         STM.pairmode = 0;
     }
     STM.autoboot_enabled = cfg_is_autoboot_enabled();
+    /* Probe for the Pro Action Replay MK3 BIOS so the menu can gate the
+     * PAR submenu / main-menu entry on its presence. Existence check only;
+     * the actual load happens on demand via load_with_parmk3(). */
+    file_open((uint8_t*)"/sd2snes/par_mk3.bin", FA_READ);
+    STM.parmk3_bios_loaded = (file_res == FR_OK) ? 1 : 0;
+    if(STM.parmk3_bios_loaded) file_close();
+    file_res = 0;
     status_load_to_menu();
 
     uint8_t cmd = 0;
@@ -549,6 +556,28 @@ int main(void) {
               case SNES_CMD_COMBO_TRANSITION:
                 usb_cmd = 0;
                 load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_COMBO | LOADROM_WITH_RESET);
+                break;
+              case SNES_CMD_ENABLE_CHEATS:
+                usb_cmd = 0;
+                /* Re-route the in-game cheat toggle to the PAR MK3 wrapper
+                 * if it owns the cheat path. The FPGA cheat.v will already
+                 * have nudged its internal cheat_enable flag, but that flag
+                 * is harmless while parmk3 is routing (no slots programmed). */
+                if(STM.parmk3_wrapper_active && CFG.enable_par && STM.parmk3_bios_loaded) {
+                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_CHEATS, 0, 1);
+                }
+                break;
+              case SNES_CMD_DISABLE_CHEATS:
+                usb_cmd = 0;
+                if(STM.parmk3_wrapper_active && CFG.enable_par && STM.parmk3_bios_loaded) {
+                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_NOCHEATS, 0, 1);
+                }
+                break;
+              case SNES_CMD_PARMK3_TO_MENU:
+                usb_cmd = 0;
+                if(STM.parmk3_wrapper_active && STM.parmk3_bios_loaded) {
+                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 1, 1);
+                }
                 break;
               default:
                 printf("unknown cmd: %02x\n", cmd);

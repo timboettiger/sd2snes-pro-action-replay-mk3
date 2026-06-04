@@ -141,6 +141,9 @@
 #define CFG_SHOW_TRIBUTE                CFG_ADDR+$00B3
 #define CFG_ENABLE_AUTOSAVE             CFG_ADDR+$00B4
 #define CFG_ENABLE_AUTOSAVE_MSU1        CFG_ADDR+$00B5
+#define CFG_ENABLE_PAR                  CFG_ADDR+$00B6
+#define CFG_PARMK3_LED_VISIBLE          CFG_ADDR+$00B7
+#define CFG_PARMK3_LED_POSITION         CFG_ADDR+$00B8
 
 #define MENU_ENTRY_SIZE             23
 
@@ -149,6 +152,9 @@
 #define ST_PAIRMODE                 ST_MCU_ADDR+$0002
 #define ST_NUM_FAVORITE_GAMES       ST_MCU_ADDR+$0003
 #define ST_AUTOBOOT_ENABLED         ST_MCU_ADDR+$0004
+#define ST_PARMK3_BIOS_LOADED       ST_MCU_ADDR+$0005
+#define ST_PARMK3_WRAPPER_ACTIVE    ST_MCU_ADDR+$0006
+#define ST_PARMK3_LEDS              ST_MCU_ADDR+$0007
 
 #define ST_IS_U16                   ST_SNES_ADDR+$0000
 #define ST_U16_CFG                  ST_SNES_ADDR+$0001

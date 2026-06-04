@@ -49,6 +49,9 @@
 #define CFG_SGB_BIOS_VERSION             ("SGBBiosVersion")
 #define CFG_ENABLE_AUTOSAVE              ("EnableAutoSave")
 #define CFG_ENABLE_AUTOSAVE_MSU1         ("EnableMSU1AutoSave")
+#define CFG_ENABLE_PAR                   ("EnablePAR")
+#define CFG_PARMK3_LED_VISIBLE           ("ParMK3LEDVisible")
+#define CFG_PARMK3_LED_POSITION          ("ParMK3LEDPosition")
 
 typedef enum {
   VIDMODE_60 = 0,
@@ -96,6 +99,12 @@ typedef struct __attribute__ ((__packed__)) _cfg_block {
   uint8_t  sgb_bios_version;        /* SGB bios firmware version (defined number loads: sgbX_boot.bin and sgbX_snes.bin) */
   uint8_t  enable_autosave;         /* enable automatic saving when SRAM contents change */
   uint8_t  enable_autosave_msu1;    /* enable opportunistic auto saving when SRAM contents change for MSU1 games */
+  /* Pro Action Replay MK3 wrapper. enable_par turns off the internal sd2snes
+   * cheat engine in favour of the MK3 BIOS's own Cheats/Trainer subsystem.
+   * Only effective when the par_mk3.bin BIOS could be loaded at boot. */
+  uint8_t  enable_par;              /* route cheat commands to PAR MK3 BIOS */
+  uint8_t  parmk3_led_visible;      /* draw MK3 LEDs as overlay sprites */
+  uint8_t  parmk3_led_position;     /* 0=TL 1=TR 2=BL 3=BR */
 } cfg_t;
 
 int cfg_save(void);

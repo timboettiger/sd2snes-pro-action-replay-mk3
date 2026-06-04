@@ -92,6 +92,7 @@ uint32_t load_with_parmk3(uint8_t* gamefile);
 uint32_t load_parmk3_bios(void);
 void save_parmk3_sram(uint8_t* gamefile);
 uint32_t load_parmk3_sram(uint8_t* gamefile);
+uint8_t parmk3_bios_available(void);
 void assert_reset(void);
 void init(uint8_t *filename);
 void deassert_reset(void);

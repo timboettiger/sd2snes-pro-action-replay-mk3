@@ -153,6 +153,9 @@ typedef struct __attribute__ ((__packed__)) _mcu_status {
   uint8_t pairmode;
   uint8_t num_favorite_games;
   uint8_t autoboot_enabled;    /* 1 if an autoboot ROM is configured */
+  uint8_t parmk3_bios_loaded;  /* 1 if /sd2snes/par_mk3.bin was found and loaded */
+  uint8_t parmk3_wrapper_active; /* 1 if a game is currently running under the MK3 wrapper */
+  uint8_t parmk3_leds;         /* mirror of MK3 LED control register $086000 (bits 0,1) */
 } mcu_status_t;
 
 typedef struct __attribute__ ((__packed__)) _snes_status {
