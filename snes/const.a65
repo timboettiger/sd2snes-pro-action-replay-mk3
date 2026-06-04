@@ -235,6 +235,15 @@ mtext_ingame_autosave_msu1        .byt " ",129,"MSU-1 Autosave", 0
 mtext_chip_cx4_speed              .byt "Cx4 speed", 0
 mtext_chip_gsu_speed              .byt "SuperFX speed", 0
 mtext_chip_msu1_volume_boost      .byt "MSU-1 volume boost", 0
+mtext_cfg_parmk3                  .byt "Pro Action Replay", 0
+mtext_parmk3_enable               .byt "Route cheats through PAR MK3", 0
+mtext_parmk3_led_visible          .byt " ",129,"Show LEDs overlay", 0
+mtext_parmk3_led_pos              .byt "  ",129,"LED position", 0
+mtext_mm_parmk3                   .byt "Pro Action Replay", 0
+text_topleft                      .byt "Top left", 0
+text_topright                     .byt "Top right", 0
+text_botleft                      .byt "Bottom left", 0
+text_botright                     .byt "Bottom right", 0
 
 mdesc_mm_last                     .byt "Show up to 10 most recently played games", 0
 mdesc_mm_favorites                .byt "Show up to 10 favorite games", 0
@@ -282,6 +291,11 @@ mdesc_ingame_autosave_msu1        .byt "MSU-1: Take some opportunities to auto-s
 mdesc_chip_cx4_speed              .byt "Set speed of Cx4 soft core", 0
 mdesc_chip_gsu_speed              .byt "Set speed of SuperFX soft core", 0
 mdesc_chip_msu1_volume_boost      .byt "Set volume boost for MSU1 audio if your sd2snes is too quiet (Rev. E-G)", 0
+mdesc_cfg_parmk3                  .byt "Pro Action Replay MK3 wrapper (requires par_mk3.bin)", 0
+mdesc_parmk3_enable               .byt "Use MK3 BIOS Cheats/Trainer instead of internal cheat engine", 0
+mdesc_parmk3_led_visible          .byt "Draw MK3 LEDs as sprite overlay during gameplay", 0
+mdesc_parmk3_led_pos              .byt "Where the LED overlay is drawn on screen", 0
+mdesc_mm_parmk3                   .byt "Return to the PAR MK3 on-cart menu (only while a game runs)", 0
 mdesc_cx4_speed_fast              .byt "Run as fast as possible", 0
 mdesc_cx4_speed_normal            .byt "Run at approx. original speed", 0
 mdesc_gsu_speed_fast              .byt "Run as fast as possible", 0

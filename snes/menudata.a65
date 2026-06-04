@@ -108,6 +108,20 @@ menu_enttab_mm:
  .byt  0,0,0
  .byt  0,0,0
 
+ .byt  MTYPE_FUNC_CLOSE
+ .word !mtext_mm_parmk3
+ .byt  ^mtext_mm_parmk3
+ .word !mfunc_parmk3_to_menu-1
+ .byt  ^mfunc_parmk3_to_menu-1
+ .byt  0
+ .byt  0,0,0
+ .word !mdesc_mm_parmk3
+ .byt  ^mdesc_mm_parmk3
+ .byt  0,0,0
+ .byt  0,0,0
+ .word !(mfunc_isenabled_parmk3_run-1)
+ .byt  ^(mfunc_isenabled_parmk3_run-1)
+
  .byt  0
 
 menu_enttab_cfg:
@@ -227,6 +241,20 @@ menu_enttab_cfg:
  .byt  0,0,0
  .byt  0,0,0
  .byt  0,0,0
+
+ .byt  MTYPE_SUBMENU
+ .word !mtext_cfg_parmk3
+ .byt  ^mtext_cfg_parmk3
+ .word !menu_enttab_parmk3
+ .byt  ^menu_enttab_parmk3
+ .byt  0
+ .byt  0,0,0
+ .word !mdesc_cfg_parmk3
+ .byt  ^mdesc_cfg_parmk3
+ .byt  0,0,0
+ .byt  0,0,0
+ .word !(mfunc_isenabled_parmk3_bios-1)
+ .byt  ^(mfunc_isenabled_parmk3_bios-1)
 
  .byt 0
 
@@ -773,6 +801,59 @@ menu_enttab_scic:
 
  .byt 0
 
+menu_enttab_parmk3:
+; HEADER
+ .byt 1
+ .word !mtext_cfg_parmk3
+ .byt  ^mtext_cfg_parmk3
+; ENTRIES
+ .byt  MTYPE_VALUE
+ .word !mtext_parmk3_enable
+ .byt  ^mtext_parmk3_enable
+ .word !kv_onoff
+ .byt  ^kv_onoff
+ .byt  OPTTYPE_KVBYTE
+ .word !CFG_ENABLE_PAR
+ .byt  ^CFG_ENABLE_PAR
+ .word !mdesc_parmk3_enable
+ .byt  ^mdesc_parmk3_enable
+ .byt  0,0,0
+ .byt  0,0,0
+ .word !(mfunc_isenabled_parmk3_bios-1)
+ .byt  ^(mfunc_isenabled_parmk3_bios-1)
+
+ .byt  MTYPE_VALUE
+ .word !mtext_parmk3_led_visible
+ .byt  ^mtext_parmk3_led_visible
+ .word !kv_onoff
+ .byt  ^kv_onoff
+ .byt  OPTTYPE_KVBYTE
+ .word !CFG_PARMK3_LED_VISIBLE
+ .byt  ^CFG_PARMK3_LED_VISIBLE
+ .word !mdesc_parmk3_led_visible
+ .byt  ^mdesc_parmk3_led_visible
+ .byt  0,0,0
+ .byt  0,0,0
+ .word !(mfunc_isenabled_parmk3_bios-1)
+ .byt  ^(mfunc_isenabled_parmk3_bios-1)
+
+ .byt  MTYPE_VALUE
+ .word !mtext_parmk3_led_pos
+ .byt  ^mtext_parmk3_led_pos
+ .word !kv_parmk3_led_pos
+ .byt  ^kv_parmk3_led_pos
+ .byt  OPTTYPE_KVBYTE
+ .word !CFG_PARMK3_LED_POSITION
+ .byt  ^CFG_PARMK3_LED_POSITION
+ .word !mdesc_parmk3_led_pos
+ .byt  ^mdesc_parmk3_led_pos
+ .byt  0,0,0
+ .byt  0,0,0
+ .word !(mfunc_isenabled_parmk3_led-1)
+ .byt  ^(mfunc_isenabled_parmk3_led-1)
+
+ .byt 0
+
 menu_enttab_filesel_context_file:
 ; HEADER
  .byt  1              ; listsel_step=1
@@ -941,6 +1022,40 @@ mfunc_isenabled_autosave:
   ror
   rtl
 
+; PAR MK3 wrapper gates:
+;   mfunc_isenabled_parmk3_bios -- carry set if BIOS dump is on the SD card
+;   mfunc_isenabled_parmk3_led  -- bios && led_visible
+;   mfunc_isenabled_parmk3_run  -- BIOS && wrapper currently driving a game
+;                                  (used by the main-menu "Pro Action Replay" entry)
+mfunc_isenabled_parmk3_bios:
+  lda @ST_PARMK3_BIOS_LOADED
+  eor #$ff
+  ror
+  rtl
+
+mfunc_isenabled_parmk3_led:
+  lda @ST_PARMK3_BIOS_LOADED
+  and @CFG_PARMK3_LED_VISIBLE
+  eor #$ff
+  ror
+  rtl
+
+mfunc_isenabled_parmk3_run:
+  lda @ST_PARMK3_WRAPPER_ACTIVE
+  and @ST_PARMK3_BIOS_LOADED
+  eor #$ff
+  ror
+  rtl
+
+mfunc_parmk3_to_menu:
+  pha
+  lda #CMD_PARMK3_TO_MENU
+- sta @MCU_CMD
+  cmp @SNES_CMD
+  bne -
+  pla
+  rtl
+
 mfunc_chg_brightness:
   sta @tgt_bright
   sta @menu_brightness
@@ -989,6 +1104,13 @@ kv_vmode_noauto:
 kv_cx4_speed:
 .word $0000, !text_normal : .byt ^text_normal
 .word $0001, !text_fast : .byt ^text_fast
+.word $ffff
+
+kv_parmk3_led_pos:
+.word $0000, !text_topleft : .byt ^text_topleft
+.word $0001, !text_topright : .byt ^text_topright
+.word $0002, !text_botleft : .byt ^text_botleft
+.word $0003, !text_botright : .byt ^text_botright
 .word $ffff
 
 kv_gsu_speed:

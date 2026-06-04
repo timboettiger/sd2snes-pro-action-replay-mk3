@@ -1,0 +1,53 @@
+;
+; parmk3_overlay.a65 -- Pro Action Replay MK3 LED overlay (SKELETON)
+;
+; The MK3 cartridge has two red LEDs on the front bezel. The openFPGA Pocket
+; port renders those on the host UI; on real SNES hardware we have no host
+; OSD, so the sd2snes wrapper has to draw them onto the SNES PPU. This file
+; sketches the data flow but is not yet wired into nmihook.a65 -- a follow-up
+; pass needs to handle the invasive bits below.
+;
+; Configuration sources (already populated by the configuration menu):
+;   CFG_PARMK3_LED_VISIBLE   -- 0 to skip rendering entirely
+;   CFG_PARMK3_LED_POSITION  -- 0=TL 1=TR 2=BL 3=BR
+;   ST_PARMK3_LEDS           -- MCU-side mirror of the MK3 $086000 LED reg
+;                               (bit 0 = left LED, bit 1 = right LED)
+;
+; Open work items before this can drive the PPU:
+;
+;   1. VRAM tile reservation. The wrapper does not know what the running game
+;      keeps where, so a safe bet is to inject two 8x8 tiles into the OBJ tile
+;      buffer at character $1FE/$1FF and pray the game does not use them.
+;      Probably needs to be gated by a "wrapper owns sprite slot N" config.
+;
+;   2. OAM slot reservation. Same problem with sprite 127 (last slot, lowest
+;      priority). Write to $2102/$2103 + $2104 via DMA in nmi_patches before
+;      the game's own OAM update is allowed to run.
+;
+;   3. Tile colour. The LEDs are red on real hardware. We need a CGRAM slot
+;      mapped to OBJ palette entry F:1 = red. Stealing palette entries during
+;      gameplay will recolour any sprite that happens to reference that index,
+;      so we probably need to pick a colour close to what the game already has
+;      or render in a fixed palette slot reserved by the wrapper.
+;
+;   4. Tile data. Two simple 8x8 tiles -- "LED on" (filled red dot) and
+;      "LED off" (dim outline). Could live alongside font.a65 and be DMA'd in
+;      at game launch.
+;
+;   5. Position. Translate CFG_PARMK3_LED_POSITION into screen coordinates and
+;      write the OAM X/Y plus the high-bit table for X>=256.
+;
+;   6. Timing. Whole pump runs from nmi_patches or after the game's NMI hook
+;      to avoid fighting the game's own sprite DMA. Needs to fit inside the
+;      VBlank budget; if it doesn't, fall back to drawing only every Nth frame.
+;
+; For now this file exists so the build system can pick it up once the pieces
+; above land. It is intentionally not included from main.a65 yet.
+;
+.link page $c0
+
+#include "memmap.i65"
+
+; Stub entry point. Replace with real OAM/CGRAM/VRAM pump.
+parmk3_led_pump:
+  rtl

@@ -9,6 +9,8 @@
 #include "cfg.h"
 #include "sgb.h"
 
+extern volatile mcu_status_t STM;
+
 #include <string.h>
 #include <stdlib.h>
 
@@ -57,11 +59,14 @@ void cheat_program() {
   snescmd_writebyte(wram_index, SNESCMD_NMI_WRAM_PATCH_COUNT);
   printf("enable mask=%02x\n", enable_mask);
   fpga_write_cheat(6, enable_mask);
-  cheat_enable(CFG.enable_cheats);
-  //cheat_nmi_enable(romprops.has_gsu ? 0 : CFG.enable_irq_hook);
-  cheat_nmi_enable(CFG.enable_ingame_hook);
-  //cheat_irq_enable(romprops.has_gsu ? 0 : CFG.enable_irq_hook);
-  cheat_irq_enable((romprops.has_gsu && !strncmp((char *)romprops.header.name, "DOOM", strlen("DOOM"))) ? 0 : CFG.enable_ingame_hook);
+  /* PAR MK3 wrapper steals the cheat/trainer responsibilities once enabled,
+   * so silence the internal engine to avoid double-handling of Enable/Disable
+   * combos and to free the WRAM-patch NMI slot for the MK3 BIOS handler. */
+  uint8_t parmk3_owns_cheats = romprops.has_par_mk3 && CFG.enable_par && STM.parmk3_bios_loaded;
+  cheat_enable(parmk3_owns_cheats ? 0 : CFG.enable_cheats);
+  cheat_nmi_enable(parmk3_owns_cheats ? 0 : CFG.enable_ingame_hook);
+  cheat_irq_enable(parmk3_owns_cheats ? 0 :
+                   ((romprops.has_gsu && !strncmp((char *)romprops.header.name, "DOOM", strlen("DOOM"))) ? 0 : CFG.enable_ingame_hook));
   cheat_holdoff_enable(CFG.enable_hook_holdoff);
   cheat_buttons_enable(CFG.enable_ingame_buttons);
   cheat_wram_present(wram_index);
