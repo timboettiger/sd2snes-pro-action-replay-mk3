@@ -298,6 +298,16 @@ int main(void) {
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
           filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
           break;
+        case SNES_CMD_LOAD_WITH_PARMK3:
+          get_selected_name(file_lfn);
+          printf("PAR MK3 wrap: %s\n", file_lfn);
+          cfg_add_listed_game(LAST_FILE, file_lfn, true);
+          filesize = load_with_parmk3(file_lfn);
+          break;
+        case SNES_CMD_PARMK3_TO_MENU:
+          fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 1, 1);
+          cmd = 0; /* stay in menu loop */
+          break;
         case SNES_CMD_SETRTC:
           /* get time from RAM */
           btime = snescmd_gettime();

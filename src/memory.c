@@ -273,6 +273,13 @@ uint32_t load_rom(uint8_t* filename, uint32_t base_addr, uint8_t flags) {
   smc_id(&romprops, file_offset);
   file_close();
 
+  /* Pro Action Replay MK3 wraps an arbitrary game; redirect the FPGA core
+   * after smc_id() has populated the standard properties. parmk3_apply()
+   * overrides fpga_conf and mapper_id but keeps the game's saveram setup. */
+  if(flags & LOADROM_WITH_PARMK3) {
+    parmk3_apply(&romprops);
+  }
+
   if(flags & LOADROM_WITH_COMBO) {
     printf("Combo Transition...");
     uint32_t romslot = snescmd_readbyte(SNESCMD_MCU_CMD + 1);
@@ -925,4 +932,68 @@ void load_dspx(const uint8_t *filename, uint8_t coretype) {
 
   file_close();
 
+}
+
+/* ----- Pro Action Replay MK3 wrapper ----------------------------------- */
+
+#define PARMK3_BIOS_FILE ((uint8_t*)"/sd2snes/par_mk3.bin")
+#define PARMK3_SAVE_FILE ((uint8_t*)SAVE_BASEDIR "par_mk3.srm")
+
+uint32_t load_parmk3_bios(void) {
+  printf("PAR MK3: loading BIOS %s\n", PARMK3_BIOS_FILE);
+  set_mcu_addr(SRAM_PARMK3_BIOS_ADDR);
+  file_open(PARMK3_BIOS_FILE, FA_READ);
+  if(file_res) {
+    printf("PAR MK3: BIOS not found (err=%d)\n", file_res);
+    return 0;
+  }
+  uint32_t filesize = file_handle.fsize;
+  if(filesize != SRAM_PARMK3_BIOS_SIZE) {
+    printf("PAR MK3: BIOS has unexpected size %lu (expected %lu)\n",
+           filesize, SRAM_PARMK3_BIOS_SIZE);
+  }
+  UINT bytes_read;
+  ff_sd_offload = 1;
+  sd_offload_tgt = 0;
+  for(;;) {
+    ff_sd_offload = 1;
+    sd_offload_tgt = 0;
+    bytes_read = file_read();
+    if(file_res || !bytes_read) break;
+  }
+  file_close();
+  return filesize;
+}
+
+uint32_t load_parmk3_sram(uint8_t* gamefile) {
+  (void)gamefile;
+  /* Always start the wrapper from a known state. The MK3 BIOS itself
+   * checks for the $ABCD warm-boot magic at DP $94 ($6194) to decide
+   * between cold/warm boot; we initialise to 0xFF so the first launch
+   * triggers a cold boot. */
+  sram_memset(SRAM_PARMK3_MK3RAM_ADDR, SRAM_PARMK3_MK3RAM_SIZE, 0xFF);
+  printf("PAR MK3: loading persisted SRAM %s\n", PARMK3_SAVE_FILE);
+  uint32_t res = load_sram_offload(PARMK3_SAVE_FILE, SRAM_PARMK3_MK3RAM_ADDR, 0);
+  if(file_res == FR_NO_FILE) file_res = 0;
+  return res;
+}
+
+void save_parmk3_sram(uint8_t* gamefile) {
+  (void)gamefile;
+  save_sram(PARMK3_SAVE_FILE, SRAM_PARMK3_MK3RAM_SIZE, SRAM_PARMK3_MK3RAM_ADDR);
+}
+
+uint32_t load_with_parmk3(uint8_t* gamefile) {
+  uint32_t res = load_rom(gamefile,
+                          SRAM_ROM_ADDR,
+                          LOADROM_WITH_SRAM
+                        | LOADROM_WITH_RESET
+                        | LOADROM_WITH_FPGA
+                        | LOADROM_WITH_PARMK3);
+  if(!res) return 0;
+  load_parmk3_bios();
+  load_parmk3_sram(gamefile);
+  /* Tell the FPGA wrapper that a cart is present and arm the MK3 menu. */
+  fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 0, 1);
+  return res;
 }
