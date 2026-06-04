@@ -82,20 +82,12 @@ menu_enttab_mm:
  .byt  0,0,0
  .byt  0,0,0
 
- .byt  MTYPE_FUNC_CLOSE
- .word !mtext_mm_parmk3
- .byt  ^mtext_mm_parmk3
- .word !mfunc_parmk3_to_menu-1
- .byt  ^mfunc_parmk3_to_menu-1
- .byt  0
- .byt  0,0,0
- .word !mdesc_mm_parmk3
- .byt  ^mdesc_mm_parmk3
- .byt  0,0,0
- .byt  0,0,0
- .word !(mfunc_isenabled_parmk3_run-1)
- .byt  ^(mfunc_isenabled_parmk3_run-1)
-
+; NOTE: the main-menu "Pro Action Replay" entry was removed. Returning to
+; the MK3 BIOS menu from a running game goes through an FPGA-side controller
+; combo (like the physical switch on the real cartridge), not through the
+; sd2snes main menu -- you can only reach the main menu via a game reset,
+; which tears the wrapper down (parmk3_wrapper_active -> 0), so the entry
+; could never actually be active here.
  .byt  MTYPE_FUNC
  .word !mtext_mm_sysinfo
  .byt  ^mtext_mm_sysinfo
