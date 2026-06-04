@@ -39,6 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libstdc++-arm-none-eabi-newlib \
         libboost-all-dev \
         gperf \
+        gawk \
         perl \
         python3 \
         cpp \

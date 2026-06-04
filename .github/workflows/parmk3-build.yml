@@ -1,0 +1,88 @@
+name: PAR MK3 bundle build
+# Builds the sd2snes_parmk3 + sd2snes_mini FPGA cores and the STM32 / LPC
+# firmware on a regular GitHub-hosted Ubuntu runner. The Synology Docker
+# host used for development crashes Quartus 18.1 inside Intel TBB; a
+# normal Ubuntu kernel does not, so CI is the reproducible fallback.
+#
+# Trigger manually (workflow_dispatch) or on a push to the
+# feature/par-mk3-support branch. Artifacts:
+#   parmk3-bundle/
+#     fpga_parmk3.bi3
+#     fpga_mini.bi3
+#     firmware.stm   (FX Pak Pro STM32)
+#     firmware.im3   (sd2snes MK.III LPC1768)
+#     menu.bin / m3nu.bin
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/par-mk3-support]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Quartus Prime Lite 18.1
+        run: |
+          set -e
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            ca-certificates wget unzip xz-utils libc6-i386 libstdc++6 \
+            libglib2.0-0 libfontconfig1 libfreetype6 libxext6 libxrender1 \
+            libxtst6 libxi6 libsm6 libxkbcommon0 libdbus-1-3 libpng16-16 \
+            python3 perl
+          wget -q https://downloads.intel.com/akdlm/software/acdsinst/18.1std/625/ib_installers/QuartusLiteSetup-18.1.0.625-linux.run
+          chmod +x QuartusLiteSetup-18.1.0.625-linux.run
+          ./QuartusLiteSetup-18.1.0.625-linux.run \
+            --mode unattended --unattendedmodeui none \
+            --installdir "$HOME/intelFPGA_lite/18.1" \
+            --accept_eula 1 \
+            --disable-components quartus_help,modelsim_ase,modelsim_ae
+          echo "$HOME/intelFPGA_lite/18.1/quartus/bin" >> "$GITHUB_PATH"
+
+      - name: Install firmware toolchain (arm-none-eabi-gcc + snescom)
+        run: |
+          set -e
+          sudo apt-get install -y --no-install-recommends \
+            build-essential make gcc-arm-none-eabi binutils-arm-none-eabi \
+            libnewlib-arm-none-eabi libboost-all-dev gawk gperf cpp
+          wget -q https://bisqwit.iki.fi/src/arch/snescom-1.8.1.1.tar.gz
+          tar -xzf snescom-1.8.1.1.tar.gz
+          (cd snescom-1.8.1.1 && make && sudo cp snescom sneslink /usr/local/bin/)
+
+      - name: Build FPGA cores
+        run: |
+          set -e
+          make -C utils rle
+          ( cd verilog/sd2snes_parmk3 && make mk3 )
+          ( cd verilog/sd2snes_mini   && make mk3 )
+
+      - name: Build SNES menu
+        run: make -C snes
+
+      - name: Build STM32 firmware
+        run: make -C src CONFIG=config-mk3-stm32
+
+      - name: Build LPC1768 firmware
+        run: make -C src CONFIG=config-mk3
+
+      - name: Assemble bundle
+        run: |
+          mkdir -p releases/parmk3-bundle
+          cp verilog/sd2snes_parmk3/fpga_parmk3.bi3 releases/parmk3-bundle/
+          cp verilog/sd2snes_mini/fpga_mini.bi3     releases/parmk3-bundle/
+          cp snes/menu.bin                          releases/parmk3-bundle/
+          cp snes/m3nu.bin                          releases/parmk3-bundle/
+          cp src/obj-mk3-stm32/firmware.stm         releases/parmk3-bundle/
+          cp src/obj-mk3/firmware.im3               releases/parmk3-bundle/
+          ls -la releases/parmk3-bundle/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: parmk3-bundle
+          path: releases/parmk3-bundle/
+          retention-days: 30
