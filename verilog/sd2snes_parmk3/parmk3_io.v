@@ -49,6 +49,7 @@ reg [31:0] slot_r [0:6];
 reg [7:0]  ca_r, cc_r, cd_r, leds_r;
 reg        cb_r;
 reg        cb_pulse;
+reg [7:0]  grp_r;          // mirror of $00:61FC (PAR-NMI group-LED status)
 
 wire is_slot = (SNES_ADDR >= 24'h100000) & (SNES_ADDR <= 24'h10001B);
 wire is_ca   = (SNES_ADDR == 24'h10001C);
@@ -56,6 +57,10 @@ wire is_cb   = (SNES_ADDR == 24'h10003C);
 wire is_cc   = (SNES_ADDR == 24'h206000);
 wire is_cd   = (SNES_ADDR == 24'h008000);
 wire is_led  = (SNES_ADDR == 24'h086000);
+// The PAR-NMI handler keeps the real group-LED status in MK3 SRAM at its DP
+// $6100 + $FC = $00:61FC (the $086000 register write masks bit0 away, so it is
+// unusable). Snoop that write so the FPGA sees which groups are active.
+wire is_grp  = (SNES_ADDR == 24'h0061FC);
 
 wire [2:0] slot_index = SNES_ADDR[4:2];
 wire [1:0] slot_byte  = SNES_ADDR[1:0];
@@ -77,9 +82,13 @@ always @(posedge CLK or negedge RST_N) begin
     cc_r     <= 8'h0;
     cd_r     <= 8'h0;
     leds_r   <= 8'h0;
+    grp_r    <= 8'h0;
     cb_pulse <= 1'b0;
   end else begin
     cb_pulse <= 1'b0;
+    // Group-LED status snoop -- separate from the IO-register decode below so it
+    // never claims cpu_hit (the write still lands in MK3 SRAM normally).
+    if (cpu_we & is_grp) grp_r <= cpu_din;
     if (cpu_we) begin
       if (is_slot) begin
         case (slot_byte)
@@ -115,7 +124,10 @@ assign control_a          = ca_r;
 assign control_b          = cb_r;
 assign control_c          = cc_r;
 assign control_d          = cd_r;
-assign leds               = leds_r;
+// LED status exposed to the mirror:
+//   bit0 (yellow / groups)  = any parameter group active ($61FC != 0)
+//   bit1 (red / trainer)    = $086000 bit1 (trainer; not masked by the handler)
+assign leds               = {6'b0, leds_r[1], (grp_r != 8'h0)};
 assign control_b_just_set = cb_pulse;
 
 endmodule
