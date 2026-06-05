@@ -268,6 +268,13 @@ int main(void) {
         STM.pairmode = 0;
     }
     STM.autoboot_enabled = cfg_is_autoboot_enabled();
+    /* Probe for the Pro Action Replay MK3 BIOS so the menu can gate the
+     * PAR submenu / main-menu entry on its presence. Existence check only;
+     * the actual load happens on demand via load_with_parmk3(). */
+    file_open((uint8_t*)"/sd2snes/par_mk3.bin", FA_READ);
+    STM.parmk3_bios_loaded = (file_res == FR_OK) ? 1 : 0;
+    if(STM.parmk3_bios_loaded) file_close();
+    file_res = 0;
     status_load_to_menu();
 
     uint8_t cmd = 0;
@@ -291,12 +298,39 @@ int main(void) {
       printf("cmd: %d\n", cmd);
       status_save_from_menu();
       uart_putc('-');
+      /* If the Pro Action Replay MK3 wrapper is armed (settings + BIOS on
+       * card), every regular ROM-load path transparently runs through the
+       * wrapper instead. SNES_CMD_LOAD_WITH_PARMK3 still exists as the
+       * explicit-override entry point for programmatic callers (USB tools,
+       * scripted launches).
+       *
+       * cfg_get_from_menu() pulls the live WRAM-mirror values into the ARM
+       * CFG struct. Without this, the user has to hit "Save Config"
+       * before the enable_par toggle takes effect; pulling the mirror at
+       * every ROM-load entry point makes the toggle behave immediately. */
+#define PARMK3_ROUTING_ACTIVE() (CFG.enable_par && STM.parmk3_bios_loaded)
       switch(cmd) {
         case SNES_CMD_LOADROM:
+          cfg_get_from_menu();
           get_selected_name(file_lfn);
           printf("Selected name: %s\n", file_lfn);
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
-          filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          if(PARMK3_ROUTING_ACTIVE()) {
+            filesize = load_with_parmk3(file_lfn);
+          } else {
+            filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          }
+          break;
+        case SNES_CMD_LOAD_WITH_PARMK3:
+          cfg_get_from_menu();
+          get_selected_name(file_lfn);
+          printf("PAR MK3 wrap (explicit): %s\n", file_lfn);
+          cfg_add_listed_game(LAST_FILE, file_lfn, true);
+          filesize = load_with_parmk3(file_lfn);
+          break;
+        case SNES_CMD_PARMK3_TO_MENU:
+          fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 1, 1);
+          cmd = 0; /* stay in menu loop */
           break;
         case SNES_CMD_SETRTC:
           /* get time from RAM */
@@ -325,16 +359,26 @@ int main(void) {
           cmd=0; /* stay in menu loop */
           break;
         case SNES_CMD_LOADLAST:
+          cfg_get_from_menu();
           cfg_get_listed_game(LAST_FILE, file_lfn, snes_get_mcu_param() & 0xff);
           printf("Selected name: %s\n", file_lfn);
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
-          filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          if(PARMK3_ROUTING_ACTIVE()) {
+            filesize = load_with_parmk3(file_lfn);
+          } else {
+            filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          }
           break;
         case SNES_CMD_LOADFAVORITE:
+          cfg_get_from_menu();
           cfg_get_listed_game(FAVORITES_FILE, file_lfn, snes_get_mcu_param() & 0xff);
           printf("Selected name: %s\n", file_lfn);
           cfg_add_listed_game(LAST_FILE, file_lfn, true);
-          filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          if(PARMK3_ROUTING_ACTIVE()) {
+            filesize = load_with_parmk3(file_lfn);
+          } else {
+            filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+          }
           break;
 /*        case SNES_CMD_SET_ALLOW_PAIR:
           cfg_set_pair_mode_allowed(snes_get_mcu_param() & 0xff);
@@ -438,7 +482,11 @@ int main(void) {
           printf("Autobooting: %s\n", file_lfn);
           if(file_lfn[0]) {
             cfg_add_listed_game(LAST_FILE, file_lfn, true);
-            filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+            if(PARMK3_ROUTING_ACTIVE()) {
+              filesize = load_with_parmk3(file_lfn);
+            } else {
+              filesize = load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_SRAM | LOADROM_WITH_RESET | LOADROM_WAIT_SNES);
+            }
             if(filesize) break; /* ROM loaded and SNES reset, exit menu loop */
           }
           /* clear file error state from any potential cause of failure
@@ -477,6 +525,7 @@ int main(void) {
 
     cmd=0;
     int loop_ticks = getticks();
+    int led_ticks = getticks();
     uint8_t usb_cmd = 0;
 // uint8_t snes_res;
     while(fpga_test() == FPGA_TEST_TOKEN) {
@@ -504,9 +553,30 @@ int main(void) {
       } else {
         if (resetState == SNES_RESET_SHORT) resetButtonState = 1;
         
+        /* PAR MK3 status-LED mirror -- own fast timer (~2 ticks) so the FPGA's
+         * live group-blink output ($61FE, snooped into leds[0]) is followed
+         * closely instead of aliased by the 25-tick main loop. The LEDs hang off
+         * the MCU (PWM pins), so the MCU has to read the FPGA status and drive
+         * them; polling often keeps the blink smooth. On this board readled is
+         * YELLOW and writeled is RED. Mirrored at the configured PAR brightness,
+         * gated on has_par_mk3 (stable for the session), off during MSU-1.
+         *   green  (rdy)   : cheats actually applying (AND par enabled AND bios)
+         *   yellow (read)  : parameter-group blink (leds[0] <- $61FE)
+         *   red    (write) : trainer status (leds[1] <- $086000 bit1) */
+        if(romprops.has_par_mk3 && CFG.parmk3_led_visible && !romprops.has_msu1
+           && getticks() > led_ticks + 2) {
+          led_ticks = getticks();
+          uint8_t st = fpga_get_parmk3_status();
+          uint8_t bright = CFG.parmk3_led_brightness;
+          STM.parmk3_leds = st & PARMK3_STATUS_LEDS_MASK;
+          rdybright(((st & PARMK3_STATUS_CHEATS_ON) && CFG.enable_par
+                     && STM.parmk3_bios_loaded) ? bright : 0);   /* green: cheats */
+          readbright((st & 1)         ? bright : 0);             /* yellow: groups */
+          writebright(((st >> 1) & 1) ? bright : 0);             /* red: trainer */
+        }
+
         if(getticks() > loop_ticks + 25) {
           loop_ticks = getticks();
- //         sram_reliable();
           printf("%s ", get_cic_statename(get_cic_state()));
           cmd=snes_main_loop();
           if (usb_cmd && !cmd) cmd = usb_cmd;
@@ -530,15 +600,42 @@ int main(void) {
                 goto snes_loop_out;
               case SNES_CMD_SAVESTATE:
                 usb_cmd = 0;
-                save_backup_state();
+                /* The MK3 BIOS persists its own snapshots into its 32 KB
+                 * cartridge SRAM and reaches into WRAM via the PAR-NMI
+                 * handler. Letting sd2snes-side save/loadstate run in
+                 * parallel would clobber the BIOS's saved-DP / saved-stack
+                 * area and lock up the wrapper on the next NMI. */
+                if(!STM.parmk3_wrapper_active) save_backup_state();
                 break;
               case SNES_CMD_LOADSTATE:
                 usb_cmd = 0;
-                load_backup_state();
+                if(!STM.parmk3_wrapper_active) load_backup_state();
                 break;
               case SNES_CMD_COMBO_TRANSITION:
                 usb_cmd = 0;
                 load_rom(file_lfn, SRAM_ROM_ADDR, LOADROM_WITH_COMBO | LOADROM_WITH_RESET);
+                break;
+              case SNES_CMD_ENABLE_CHEATS:
+                usb_cmd = 0;
+                /* Re-route the in-game cheat toggle to the PAR MK3 wrapper
+                 * if it owns the cheat path. The FPGA cheat.v will already
+                 * have nudged its internal cheat_enable flag, but that flag
+                 * is harmless while parmk3 is routing (no slots programmed). */
+                if(STM.parmk3_wrapper_active && CFG.enable_par && STM.parmk3_bios_loaded) {
+                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_CHEATS, 0, 1);
+                }
+                break;
+              case SNES_CMD_DISABLE_CHEATS:
+                usb_cmd = 0;
+                if(STM.parmk3_wrapper_active && CFG.enable_par && STM.parmk3_bios_loaded) {
+                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_NOCHEATS, 0, 1);
+                }
+                break;
+              case SNES_CMD_PARMK3_TO_MENU:
+                usb_cmd = 0;
+                if(STM.parmk3_wrapper_active && STM.parmk3_bios_loaded) {
+                  fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 1, 1);
+                }
                 break;
               default:
                 printf("unknown cmd: %02x\n", cmd);

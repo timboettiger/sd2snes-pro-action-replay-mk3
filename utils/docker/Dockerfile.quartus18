@@ -1,0 +1,87 @@
+# Quartus 18.1 Lite on Ubuntu 18.04 (glibc 2.27) for Cyclone IV E builds.
+#
+# Why 18.04 and not 20.04+: Quartus 18.1 segfaults at startup on glibc 2.31+
+# regardless of LD_PRELOAD / libstdc++ tricks (`realloc(): invalid pointer`
+# inside libc's malloc internals).
+#
+# Why a separate image from mk3-quartus (25.1 Lite): Quartus 25.1 no longer
+# ships the Cyclone IV E device family that the sd2snes / sd2snes_parmk3 /
+# sd2snes_mini cores target (EP4CE15F17C8). 25.1 is kept around for the
+# openFPGA Pocket port (Cyclone V).
+#
+# Known limitation observed on Synology DSM Docker (kernel 4.4 vintage):
+# quartus_map gets to elaboration, then segfaults inside Intel TBB's
+# `tbbmalloc::freePublicObject`. The exact failure mode depends on which
+# combination of LD_PRELOAD / libstdc++ overrides are active; all of:
+#
+#   bare:              `realloc(): invalid pointer` immediately on startup
+#   LD_PRELOAD=jemalloc:           map runs to end, fit crashes in routing
+#   System libtbb + jemalloc:      libstdc++ ABI mismatch
+#   System libstdc++ + jemalloc:   Segment Violation in qsyn_framework
+#
+# This is most likely a Synology-kernel-vs-Quartus-Intel-TBB-allocator
+# interaction. A regular Ubuntu 18.04 host (real or VM) on a modern kernel
+# does NOT exhibit the crash. On Synology, build the cores locally on a
+# Linux workstation or via GitHub Actions instead -- see
+# .github/workflows/parmk3-build.yml.
+
+FROM ubuntu:18.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        locales \
+        libglib2.0-0 \
+        libfontconfig1 \
+        libfreetype6 \
+        libxext6 \
+        libxrender1 \
+        libxtst6 \
+        libxi6 \
+        libsm6 \
+        libxkbcommon0 \
+        libdbus-1-3 \
+        libpng16-16 \
+        wget \
+        curl \
+        sudo \
+        unzip \
+        xz-utils \
+        perl \
+        python3 \
+        tzdata \
+        libc6-i386 \
+        libstdc++6 \
+        libjemalloc1 \
+    && locale-gen en_US.UTF-8 \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8 \
+    LC_ALL=en_US.UTF-8
+
+COPY QuartusLiteSetup-18.1.0.625-linux.run /tmp/q18.run
+COPY cyclone-18.1.0.625.qdz                /tmp/cyclone-18.1.0.625.qdz
+RUN chmod +x /tmp/q18.run \
+    && /tmp/q18.run \
+            --mode unattended \
+            --unattendedmodeui none \
+            --installdir /opt/intelFPGA_lite/18.1 \
+            --accept_eula 1 \
+            --disable-components quartus_help,modelsim_ase,modelsim_ae \
+    && test -x /opt/intelFPGA_lite/18.1/quartus/bin/quartus_sh \
+    && mkdir -p /opt/intelFPGA_lite/18.1/quartus/devices \
+    && cp /tmp/cyclone-18.1.0.625.qdz /opt/intelFPGA_lite/18.1/quartus/devices/ \
+    && rm -f /tmp/q18.run /tmp/cyclone-18.1.0.625.qdz
+
+ENV QUARTUS_ROOTDIR=/opt/intelFPGA_lite/18.1/quartus
+ENV PATH=$QUARTUS_ROOTDIR/bin:$PATH
+# LD_PRELOAD is the best-effort allocator workaround on Synology;
+# on a regular Linux host it can be left unset.
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.1
+
+RUN quartus_sh --version
+
+WORKDIR /work
+CMD ["bash"]

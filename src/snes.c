@@ -64,7 +64,10 @@ mcu_status_t STM = {
   .rtc_valid = 0xff,
   .num_recent_games = 0,
   .pairmode = 0,
-  .num_favorite_games = 0
+  .num_favorite_games = 0,
+  .parmk3_bios_loaded = 0,
+  .parmk3_wrapper_active = 0,
+  .parmk3_leds = 0
 };
 
 snes_status_t STS = {
@@ -112,6 +115,11 @@ void prepare_reset() {
   if(romprops.sramsize_bytes && fpga_test() == FPGA_TEST_TOKEN) {
     writeled(1);
     save_srm(file_lfn, romprops.ramsize_bytes, SRAM_SAVE_ADDR);
+    writeled(0);
+  }
+  if(STM.parmk3_wrapper_active && fpga_test() == FPGA_TEST_TOKEN) {
+    writeled(1);
+    save_parmk3_sram(file_lfn);
     writeled(0);
   }
   // don't save SGB RTC since we are in reset and it may be undefined

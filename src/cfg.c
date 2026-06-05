@@ -47,8 +47,12 @@ cfg_t CFG_DEFAULT = {
   .sgb_enh_override = 0,
   .sgb_clock_fix = 1,
   .sgb_bios_version = 2,
+  .show_tribute = 0,                /* reserved padding (see cfg.h) */
   .enable_autosave = 1,
-  .enable_autosave_msu1 = 1
+  .enable_autosave_msu1 = 1,
+  .enable_par = 0,
+  .parmk3_led_visible = 1,
+  .parmk3_led_brightness = 15       /* full brightness for the PAR status LEDs */
 };
 
 cfg_t CFG;
@@ -150,6 +154,13 @@ int cfg_save() {
   f_printf(&file_handle, "%s: %s\n", CFG_ENABLE_AUTOSAVE, CFG.enable_autosave ? "true" : "false");
   f_printf(&file_handle, "#  %s: Opportunistic Autosave for MSU-1 games\n", CFG_ENABLE_AUTOSAVE_MSU1);
   f_printf(&file_handle, "%s: %s\n", CFG_ENABLE_AUTOSAVE_MSU1, CFG.enable_autosave_msu1 ? "true" : "false");
+  f_puts("\n# Pro Action Replay MK3 wrapper (requires /sd2snes/par_mk3.bin)\n", &file_handle);
+  f_printf(&file_handle, "#  %s: route Cheats/Trainer through the MK3 BIOS instead of the internal cheat engine\n", CFG_ENABLE_PAR);
+  f_printf(&file_handle, "%s: %s\n", CFG_ENABLE_PAR, CFG.enable_par ? "true" : "false");
+  f_printf(&file_handle, "#  %s: mirror MK3 cart LEDs onto the sd2snes hardware LEDs\n", CFG_PARMK3_LED_VISIBLE);
+  f_printf(&file_handle, "%s: %s\n", CFG_PARMK3_LED_VISIBLE, CFG.parmk3_led_visible ? "true" : "false");
+  f_printf(&file_handle, "#  %s: brightness (0-15) of the mirrored PAR status LEDs\n", CFG_PARMK3_LED_BRIGHTNESS);
+  f_printf(&file_handle, "%s: %d\n", CFG_PARMK3_LED_BRIGHTNESS, CFG.parmk3_led_brightness);
   file_close();
   return err;
 }
@@ -278,6 +289,18 @@ int cfg_load() {
     }
     if(yaml_get_itemvalue(CFG_ENABLE_AUTOSAVE_MSU1, &tok)) {
       CFG.enable_autosave_msu1 = tok.boolvalue ? 1 : 0;
+    }
+    if(yaml_get_itemvalue(CFG_ENABLE_PAR, &tok)) {
+      CFG.enable_par = tok.boolvalue ? 1 : 0;
+    }
+    if(yaml_get_itemvalue(CFG_PARMK3_LED_VISIBLE, &tok)) {
+      CFG.parmk3_led_visible = tok.boolvalue ? 1 : 0;
+    }
+    if(yaml_get_itemvalue(CFG_PARMK3_LED_BRIGHTNESS, &tok)) {
+      CFG.parmk3_led_brightness = tok.longvalue;
+      if(CFG.parmk3_led_brightness > 15) {
+        CFG.parmk3_led_brightness = 15;
+      }
     }
   }
   yaml_file_close();

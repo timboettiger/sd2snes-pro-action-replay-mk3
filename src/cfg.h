@@ -49,6 +49,9 @@
 #define CFG_SGB_BIOS_VERSION             ("SGBBiosVersion")
 #define CFG_ENABLE_AUTOSAVE              ("EnableAutoSave")
 #define CFG_ENABLE_AUTOSAVE_MSU1         ("EnableMSU1AutoSave")
+#define CFG_ENABLE_PAR                   ("EnablePAR")
+#define CFG_PARMK3_LED_VISIBLE           ("ParMK3LEDVisible")
+#define CFG_PARMK3_LED_BRIGHTNESS        ("ParMK3LEDBrightness")
 
 typedef enum {
   VIDMODE_60 = 0,
@@ -94,8 +97,19 @@ typedef struct __attribute__ ((__packed__)) _cfg_block {
   uint8_t  sgb_spr_increase;        /* SGB increase number of supported visible sprites */
   uint8_t  sgb_clock_fix;           /* SGB timing/clock (true: original/sgb2, false: snes/sgb1) */
   uint8_t  sgb_bios_version;        /* SGB bios firmware version (defined number loads: sgbX_boot.bin and sgbX_snes.bin) */
+  uint8_t  show_tribute;            /* RESERVED: tribute screen was removed in 30d2ca6 but
+                                       snes/memmap.i65 still maps CFG_SHOW_TRIBUTE at +0xB3.
+                                       This padding byte keeps the C struct and the SNES-side
+                                       offsets byte-aligned -- removing it shifts every field
+                                       after it by one, which silently mis-reads enable_par. */
   uint8_t  enable_autosave;         /* enable automatic saving when SRAM contents change */
   uint8_t  enable_autosave_msu1;    /* enable opportunistic auto saving when SRAM contents change for MSU1 games */
+  /* Pro Action Replay MK3 wrapper. enable_par turns off the internal sd2snes
+   * cheat engine in favour of the MK3 BIOS's own Cheats/Trainer subsystem.
+   * Only effective when the par_mk3.bin BIOS could be loaded at boot. */
+  uint8_t  enable_par;              /* every ROM launch wrapped by MK3 BIOS */
+  uint8_t  parmk3_led_visible;      /* mirror MK3 LEDs onto sd2snes hardware LEDs */
+  uint8_t  parmk3_led_brightness;   /* brightness (0-15) of the mirrored PAR status LEDs */
 } cfg_t;
 
 int cfg_save(void);

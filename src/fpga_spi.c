@@ -507,6 +507,25 @@ void fpga_set_chipfeat(uint16_t feat) {
   FPGA_DESELECT();
 }
 
+void fpga_set_parmk3_ctrl(uint8_t switch_pos, uint8_t par_menu, uint8_t game_loaded) {
+  uint8_t payload = (switch_pos & 0x03)
+                  | ((par_menu    ? 1 : 0) << 2)
+                  | ((game_loaded ? 1 : 0) << 3);
+  FPGA_SELECT();
+  FPGA_TX_BYTE(FPGA_CMD_PARMK3_CTRL);
+  FPGA_TX_BYTE(payload);
+  FPGA_DESELECT();
+}
+
+uint8_t fpga_get_parmk3_status(void) {
+  uint8_t status;
+  FPGA_SELECT();
+  FPGA_TX_BYTE(FPGA_CMD_PARMK3_STATUS);
+  status = FPGA_TXRX_BYTE(0x00);
+  FPGA_DESELECT();
+  return status;
+}
+
 uint8_t fpga_read_config(uint8_t group, uint8_t index) {
   uint8_t data;
   FPGA_SELECT();
