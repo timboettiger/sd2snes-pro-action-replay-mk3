@@ -507,11 +507,10 @@ void fpga_set_chipfeat(uint16_t feat) {
   FPGA_DESELECT();
 }
 
-void fpga_set_parmk3_ctrl(uint8_t switch_pos, uint8_t par_menu, uint8_t game_loaded, uint8_t trainer_button) {
+void fpga_set_parmk3_ctrl(uint8_t switch_pos, uint8_t par_menu, uint8_t game_loaded) {
   uint8_t payload = (switch_pos & 0x03)
-                  | ((par_menu       ? 1 : 0) << 2)
-                  | ((game_loaded    ? 1 : 0) << 3)
-                  | ((trainer_button ? 1 : 0) << 4);
+                  | ((par_menu    ? 1 : 0) << 2)
+                  | ((game_loaded ? 1 : 0) << 3);
   FPGA_SELECT();
   FPGA_TX_BYTE(FPGA_CMD_PARMK3_CTRL);
   FPGA_TX_BYTE(payload);
@@ -525,31 +524,6 @@ uint8_t fpga_get_parmk3_status(void) {
   status = FPGA_TXRX_BYTE(0x00);
   FPGA_DESELECT();
   return status;
-}
-
-/* DEBUG: write the MCU-side state snapshot byte (read back via config 0x05/0x05). */
-void fpga_set_parmk3_dbg(uint8_t val) {
-  FPGA_SELECT();
-  FPGA_TX_BYTE(FPGA_CMD_PARMK3_DBG_WR);
-  FPGA_TX_BYTE(val);
-  FPGA_DESELECT();
-}
-
-/* DEBUG: read a single parmk3 debug status byte (pad bytes / read counters). */
-uint8_t fpga_get_parmk3_dbgbyte(uint8_t cmd) {
-  uint8_t v;
-  FPGA_SELECT();
-  FPGA_TX_BYTE(cmd);
-  v = FPGA_TXRX_BYTE(0x00);
-  FPGA_DESELECT();
-  return v;
-}
-
-/* DEBUG: read the raw controller-1 state captured by parmk3_pad_snoop. */
-uint16_t fpga_get_parmk3_pad(void) {
-  uint8_t hi = fpga_get_parmk3_dbgbyte(FPGA_CMD_PARMK3_PAD_HI);
-  uint8_t lo = fpga_get_parmk3_dbgbyte(FPGA_CMD_PARMK3_PAD_LO);
-  return ((uint16_t)hi << 8) | lo;
 }
 
 uint8_t fpga_read_config(uint8_t group, uint8_t index) {

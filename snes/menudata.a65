@@ -844,21 +844,6 @@ menu_enttab_parmk3:
  .word !(mfunc_isenabled_parmk3_bios-1)
  .byt  ^(mfunc_isenabled_parmk3_bios-1)
 
- .byt  MTYPE_VALUE
- .word !mtext_parmk3_trainer
- .byt  ^mtext_parmk3_trainer
- .word !kv_selectstart
- .byt  ^kv_selectstart
- .byt  OPTTYPE_KVBYTE
- .word !CFG_PARMK3_TRAINER_BUTTON
- .byt  ^CFG_PARMK3_TRAINER_BUTTON
- .word !mdesc_parmk3_trainer
- .byt  ^mdesc_parmk3_trainer
- .byt  0,0,0
- .byt  0,0,0
- .word !(mfunc_isenabled_parmk3_bios-1)
- .byt  ^(mfunc_isenabled_parmk3_bios-1)
-
  .byt 0
 
 menu_enttab_filesel_context_file:
@@ -1077,11 +1062,6 @@ kv_bsx_timesource:
 kv_onoff:
 .word $0000, !text_off : .byt ^text_off
 .word $0001, !text_on : .byt ^text_on
-.word $ffff
-
-kv_selectstart:
-.word $0000, !text_parmk3_select : .byt ^text_parmk3_select
-.word $0001, !text_parmk3_start : .byt ^text_parmk3_start
 .word $ffff
 
 kv_enabledisable:

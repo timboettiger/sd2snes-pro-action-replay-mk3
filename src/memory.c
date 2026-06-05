@@ -1089,7 +1089,7 @@ uint32_t load_with_parmk3(uint8_t* gamefile) {
   }
   /* BIOS + MK3 SRAM were already loaded inside load_rom() at the safe point.
    * Just arm the wrapper FSM in MK3-menu mode with a cart present. */
-  fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 0, 1, CFG.parmk3_trainer_button);
+  fpga_set_parmk3_ctrl(PARMK3_SWITCH_MENU, 0, 1);
   STM.parmk3_wrapper_active = 1;
   return res;
 }

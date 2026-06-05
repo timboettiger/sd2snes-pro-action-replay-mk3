@@ -677,17 +677,9 @@ mcu_cmd snes_mcu_cmd(
   .parmk3_switch_pos_out(parmk3_switch_pos),
   .parmk3_par_menu_out(parmk3_par_menu),
   .parmk3_game_loaded_out(parmk3_game_loaded),
-  .parmk3_trainer_button_out(parmk3_trainer_button),
   .parmk3_leds_in(parmk3_leds),
   .parmk3_mode_in(parmk3_mode),
-  .parmk3_cheats_active_in(parmk3_cheats_active),
-  .parmk3_pad_dbg_in(parmk3_pad_dbg),
-  .parmk3_rd4219_cnt_in(parmk3_rd4219_cnt),
-  .parmk3_rd4016_cnt_in(parmk3_rd4016_cnt),
-  .parmk3_nmi5_dbg_in(parmk3_nmi5_dbg),
-  .parmk3_nmi6_dbg_in(parmk3_nmi6_dbg),
-  .parmk3_state_dbg_in(parmk3_state_dbg),
-  .parmk3_nmi_fetch_cnt_in(parmk3_nmi_fetch_cnt)
+  .parmk3_cheats_active_in(parmk3_cheats_active)
 );
 
 address snes_addr(
@@ -757,29 +749,16 @@ wire [7:0]  parmk3_leds;
 wire [1:0]  parmk3_switch_pos;
 wire        parmk3_par_menu;
 wire        parmk3_game_loaded;
-wire        parmk3_trainer_button;
 wire        parmk3_cheats_active;
-wire [15:0] parmk3_pad_dbg;
-wire [7:0]  parmk3_rd4219_cnt;
-wire [7:0]  parmk3_rd4016_cnt;
-wire [7:0]  parmk3_nmi5_dbg;
-wire [7:0]  parmk3_nmi6_dbg;
-wire [7:0]  parmk3_state_dbg;
-wire [7:0]  parmk3_nmi_fetch_cnt;
 parmk3_top snes_parmk3(
   .CLK(CLK2),
   .RST_N(~SNES_reset_strobe),
   .SNES_ADDR(SNES_ADDR),
   .cpu_we(SNES_WR_end),
   .bus_data(SNES_DATA),
-  .snes_data_in(SNES_DATA_IN),
-  .snes_rd_start(SNES_RD_start),
-  .snes_rd_end(SNES_RD_end),
-  .snes_wr_end(SNES_WR_end),
   .mcu_switch_pos(parmk3_switch_pos),
   .mcu_par_menu(parmk3_par_menu),
   .mcu_game_loaded(parmk3_game_loaded),
-  .mcu_trainer_button(parmk3_trainer_button),
   .sel_mk3_bios(parmk3_sel_bios),
   .sel_game_rom(parmk3_sel_game),
   .sel_mk3_sram(parmk3_sel_mk3sram),
@@ -790,14 +769,7 @@ parmk3_top snes_parmk3(
   .snes_soft_reset(parmk3_soft_reset),
   .effective_mode(parmk3_mode),
   .cheats_active(parmk3_cheats_active),
-  .leds(parmk3_leds),
-  .pad_dbg(parmk3_pad_dbg),
-  .rd4219_cnt(parmk3_rd4219_cnt),
-  .rd4016_cnt(parmk3_rd4016_cnt),
-  .nmi5_dbg(parmk3_nmi5_dbg),
-  .nmi6_dbg(parmk3_nmi6_dbg),
-  .state_dbg(parmk3_state_dbg),
-  .nmi_fetch_cnt(parmk3_nmi_fetch_cnt)
+  .leds(parmk3_leds)
 );
 
 reg pad_latch = 0;

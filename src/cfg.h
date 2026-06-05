@@ -51,7 +51,6 @@
 #define CFG_ENABLE_AUTOSAVE_MSU1         ("EnableMSU1AutoSave")
 #define CFG_ENABLE_PAR                   ("EnablePAR")
 #define CFG_PARMK3_LED_VISIBLE           ("ParMK3LEDVisible")
-#define CFG_PARMK3_TRAINER_BUTTON        ("ParMK3TrainerButton")
 #define CFG_PARMK3_LED_BRIGHTNESS        ("ParMK3LEDBrightness")
 
 typedef enum {
@@ -110,7 +109,6 @@ typedef struct __attribute__ ((__packed__)) _cfg_block {
    * Only effective when the par_mk3.bin BIOS could be loaded at boot. */
   uint8_t  enable_par;              /* every ROM launch wrapped by MK3 BIOS */
   uint8_t  parmk3_led_visible;      /* mirror MK3 LEDs onto sd2snes hardware LEDs */
-  uint8_t  parmk3_trainer_button;   /* in-game cheat-toggle combo modifier: 0=Select, 1=Start */
   uint8_t  parmk3_led_brightness;   /* brightness (0-15) of the mirrored PAR status LEDs */
 } cfg_t;
 

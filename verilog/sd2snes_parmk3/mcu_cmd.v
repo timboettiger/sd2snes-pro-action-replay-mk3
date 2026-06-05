@@ -114,20 +114,12 @@ module mcu_cmd(
   output reg [1:0] parmk3_switch_pos_out,
   output reg parmk3_par_menu_out,
   output reg parmk3_game_loaded_out,
-  output reg parmk3_trainer_button_out,   // 0 = Select, 1 = Start
 
   // PAR MK3 wrapper status read-back (FPGA_CMD_PARMK3_STATUS = 0xdf)
   // Driven from parmk3_top via main.v.
   input [7:0] parmk3_leds_in,
   input [1:0] parmk3_mode_in,
-  input parmk3_cheats_active_in,     // 1 = interceptor applying cheats now (status bit 4)
-  input [15:0] parmk3_pad_dbg_in,    // DEBUG: raw controller-1 snoop (0xDC hi / 0xDB lo)
-  input [7:0] parmk3_rd4219_cnt_in,  // DEBUG: auto-joypad read count (0xDA)
-  input [7:0] parmk3_rd4016_cnt_in,  // DEBUG: manual read count (0xD9)
-  input [7:0] parmk3_nmi5_dbg_in,    // DEBUG: NMI vector LSB (slot5) via config 0x05/0x06
-  input [7:0] parmk3_nmi6_dbg_in,    // DEBUG: NMI vector MSB (slot6) via config 0x05/0x07
-  input [7:0] parmk3_state_dbg_in,   // DEBUG: core state via config 0x05/0x08
-  input [7:0] parmk3_nmi_fetch_cnt_in // DEBUG: NMI vector fetch count via config 0x05/0x09
+  input parmk3_cheats_active_in     // 1 = interceptor applying cheats now (status bit 4)
 );
 
 initial begin
@@ -137,7 +129,6 @@ initial begin
   parmk3_switch_pos_out = 2'd2;   // start in MK3_MENU mode
   parmk3_par_menu_out = 1'b0;
   parmk3_game_loaded_out = 1'b0;
-  parmk3_trainer_button_out = 1'b0;  // default Select (matches real MK3)
 end
 
 wire [31:0] snes_sysclk_freq;
@@ -165,7 +156,6 @@ reg [7:0] value_out_buf; initial value_out_buf = 8'hFF;
 reg [7:0] invmask_out_buf; initial invmask_out_buf = 8'hFF;
 reg [7:0] group_read_buf; initial group_read_buf = 8'hFF;
 reg [7:0] index_read_buf; initial index_read_buf = 8'hFF;
-reg [7:0] mcu_dbg_r;      initial mcu_dbg_r = 8'h00;   // DEBUG: MCU-side state snapshot
 reg [7:0] temp_read_buf; initial temp_read_buf = 8'hFF;
 
 reg reg_we_buf; initial reg_we_buf = 0;
@@ -414,19 +404,15 @@ always @(posedge clk) begin
         endcase
       8'hee:
         region_out <= param_data[0];
-      8'hdd:
-        mcu_dbg_r <= param_data;   // DEBUG: MCU-side state snapshot (read via config 0x05/0x05)
       8'hde: begin
         /* FPGA_CMD_PARMK3_CTRL — single parameter byte:
          *   bits [1:0] = switch_pos (0=NoCheats, 1=Cheats, 2=MK3 Menu)
          *   bit  [2]   = par_menu pulse (one-shot back to MK3 Menu)
          *   bit  [3]   = game_loaded flag
-         *   bit  [4]   = trainer button (0=Select, 1=Start) for live combo
          */
         parmk3_switch_pos_out     <= param_data[1:0];
         parmk3_par_menu_out       <= param_data[2];
         parmk3_game_loaded_out    <= param_data[3];
-        parmk3_trainer_button_out <= param_data[4];
       end
       8'hfa: // handles all group, index, value, invmask writes.  unit is responsible for decoding group for match
         case (spi_byte_cnt)
@@ -562,14 +548,6 @@ always @(posedge clk) begin
       //   bit  [4]   = cheats_active (interceptor live, incl. combo toggle)
       //   bits [7:5] = reserved
       MCU_DATA_IN_BUF <= {3'b0, parmk3_cheats_active_in, parmk3_mode_in, parmk3_leds_in[1:0]};
-    else if (cmd_data[7:0] == 8'hDC)
-      MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[15:8];   // DEBUG: pad high byte
-    else if (cmd_data[7:0] == 8'hDB)
-      MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[7:0];    // DEBUG: pad low byte
-    else if (cmd_data[7:0] == 8'hDA)
-      MCU_DATA_IN_BUF <= parmk3_rd4219_cnt_in;      // DEBUG: auto-joypad read count
-    else if (cmd_data[7:0] == 8'hD9)
-      MCU_DATA_IN_BUF <= parmk3_rd4016_cnt_in;      // DEBUG: manual read count
     else if (cmd_data[7:0] == 8'hD1)
       MCU_DATA_IN_BUF <= snescmd_data_in;
     else if (cmd_data[7:0] == 8'hF9)
@@ -581,25 +559,9 @@ always @(posedge clk) begin
           index_read_buf <= param_data;
         end
         32'h4: begin
-          //if (group_read_buf == 8'h01) MCU_DATA_IN_BUF <= trc_config_data_in;
-          // PAR MK3 controller-snoop diagnostic (group 0x05). Served on the
-          // config SPI read path, which never touches PSRAM, so it stays valid
-          // while a game runs (unlike the old SRAM mirror).
-          if (group_read_buf == 8'h05) begin
-            case (index_read_buf)
-              8'h00:   MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[15:8];
-              8'h01:   MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[7:0];
-              8'h02:   MCU_DATA_IN_BUF <= parmk3_rd4219_cnt_in;
-              8'h03:   MCU_DATA_IN_BUF <= parmk3_rd4016_cnt_in;
-              8'h05:   MCU_DATA_IN_BUF <= mcu_dbg_r;   // DEBUG: MCU-side state snapshot
-              8'h06:   MCU_DATA_IN_BUF <= parmk3_nmi5_dbg_in;   // DEBUG: NMI vec LSB (slot5)
-              8'h07:   MCU_DATA_IN_BUF <= parmk3_nmi6_dbg_in;   // DEBUG: NMI vec MSB (slot6)
-              8'h08:   MCU_DATA_IN_BUF <= parmk3_state_dbg_in;  // DEBUG: core state
-              8'h09:   MCU_DATA_IN_BUF <= parmk3_nmi_fetch_cnt_in; // DEBUG: NMI fetch count
-              default: MCU_DATA_IN_BUF <= 8'h0;
-            endcase
-          end else
-            MCU_DATA_IN_BUF <= 0;
+          // Config-read path (group/index); never touches PSRAM, so it is safe
+          // during gameplay. The parmk3 core currently serves no config groups.
+          MCU_DATA_IN_BUF <= 0;
         end
       endcase
     else if (cmd_data[7:0] == 8'hF0)

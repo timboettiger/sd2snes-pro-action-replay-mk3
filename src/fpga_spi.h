@@ -99,22 +99,17 @@
 /* Pro Action Replay MK3 wrapper: switch position + game-loaded flag + par_menu pulse */
 #define FPGA_CMD_PARMK3_CTRL     (0xde)
 #define FPGA_CMD_PARMK3_STATUS   (0xdf)
-#define FPGA_CMD_PARMK3_PAD_HI   (0xdc)   /* DEBUG: raw controller-1 snoop, high byte */
-#define FPGA_CMD_PARMK3_PAD_LO   (0xdb)   /* DEBUG: raw controller-1 snoop, low byte */
-#define FPGA_CMD_PARMK3_CNT4219  (0xda)   /* DEBUG: auto-joypad read count */
-#define FPGA_CMD_PARMK3_CNT4016  (0xd9)   /* DEBUG: manual read count */
-#define FPGA_CMD_PARMK3_DBG_WR   (0xdd)   /* DEBUG: MCU writes a state byte (read via config 0x05/0x05) */
 #define PARMK3_SWITCH_NOCHEATS   (0)
 #define PARMK3_SWITCH_CHEATS     (1)
 #define PARMK3_SWITCH_MENU       (2)
 /* fpga_get_parmk3_status() byte layout:
- *   bits [1:0] = LEDs (bit0 = left, bit1 = right; from MK3 reg $086000)
+ *   bits [1:0] = LEDs (bit0 = group, bit1 = trainer; live blink from MK3 $00:61FE)
  *   bits [3:2] = effective_mode (0=Menu, 1=CheatsActive, 2=NoCheats)
  *   bits [7:4] = reserved */
 #define PARMK3_STATUS_LEDS_MASK  (0x03)
 #define PARMK3_STATUS_MODE_SHIFT (2)
 #define PARMK3_STATUS_MODE_MASK  (0x0C)
-#define PARMK3_STATUS_CHEATS_ON  (0x10)  /* interceptor live (incl. combo toggle) */
+#define PARMK3_STATUS_CHEATS_ON  (0x10)  /* interceptor live (effective_mode == CheatsActive) */
 #define PARMK3_LED_BRIGHT        (15)    /* fixed brightness for the parmk3 status LEDs */
 #define FPGA_CMD_TEST            (0xf0)
 #define FPGA_CMD_GETSTATUS       (0xf1)
@@ -166,11 +161,8 @@ void fpga_set_snescmd_addr(uint16_t addr);
 void fpga_write_snescmd(uint8_t data);
 uint8_t fpga_read_snescmd(void);
 void fpga_write_cheat(uint8_t index, uint32_t code);
-void fpga_set_parmk3_ctrl(uint8_t switch_pos, uint8_t par_menu, uint8_t game_loaded, uint8_t trainer_button);
+void fpga_set_parmk3_ctrl(uint8_t switch_pos, uint8_t par_menu, uint8_t game_loaded);
 uint8_t fpga_get_parmk3_status(void);
-uint16_t fpga_get_parmk3_pad(void);
-uint8_t fpga_get_parmk3_dbgbyte(uint8_t cmd);
-void fpga_set_parmk3_dbg(uint8_t val);
 void fpga_set_chipfeat(uint16_t feat);
 uint8_t fpga_read_config(uint8_t group, uint8_t index);
 void fpga_write_config(uint8_t group, uint8_t index, uint8_t value, uint8_t invmask);

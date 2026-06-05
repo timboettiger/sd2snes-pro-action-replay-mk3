@@ -46,28 +46,29 @@ module parmk3_io(
 );
 
 reg [31:0] slot_r [0:6];
-reg [7:0]  ca_r, cc_r, cd_r, leds_r;
+reg [7:0]  ca_r, cc_r, cd_r;
 reg        cb_r;
 reg        cb_pulse;
-reg [7:0]  grp_r;          // mirror of $00:61FC (PAR-NMI group-LED status)
+reg [7:0]  grp_r;          // mirror of $00:61FE (PAR-NMI live LED output)
 
 wire is_slot = (SNES_ADDR >= 24'h100000) & (SNES_ADDR <= 24'h10001B);
 wire is_ca   = (SNES_ADDR == 24'h10001C);
 wire is_cb   = (SNES_ADDR == 24'h10003C);
 wire is_cc   = (SNES_ADDR == 24'h206000);
 wire is_cd   = (SNES_ADDR == 24'h008000);
-wire is_led  = (SNES_ADDR == 24'h086000);
-// The PAR-NMI handler keeps the live group-LED output in MK3 SRAM at its DP
-// $6100 + $FE = $00:61FE. This is the *blink* output ($086000 masks bit0 away,
-// so that register is unusable): bit0 toggles fast for group A, slow for group
-// B, stays solid for both, and is 0 when no group is active. Snoop it so the
-// FPGA mirrors the authentic blink onto the yellow LED.
+// The PAR-NMI handler keeps the live LED output in MK3 SRAM at its DP
+// $6100 + $FE = $00:61FE -- NOT at the $086000 hardware register, whose bit0
+// the handler masks away (`and #$FE`) on every runtime write, leaving it stuck
+// at the last boot pattern. $61FE carries the real blink for both LEDs:
+//   bit0 = LED 1 (group): fast = A, slow = B, solid = both, 0 = none
+//   bit1 = LED 2 (trainer): slow = many candidates, fast = one found
+// Snoop it so the FPGA mirrors the authentic blink onto both status LEDs.
 wire is_grp  = (SNES_ADDR == 24'h0061FE);
 
 wire [2:0] slot_index = SNES_ADDR[4:2];
 wire [1:0] slot_byte  = SNES_ADDR[1:0];
 
-assign cpu_hit  = is_slot | is_ca | is_cb | is_cc | is_cd | is_led;
+assign cpu_hit  = is_slot | is_ca | is_cb | is_cc | is_cd;
 assign cpu_dout = 8'h00;
 
 always @(posedge CLK or negedge RST_N) begin
@@ -83,7 +84,6 @@ always @(posedge CLK or negedge RST_N) begin
     cb_r     <= 1'b0;
     cc_r     <= 8'h0;
     cd_r     <= 8'h0;
-    leds_r   <= 8'h0;
     grp_r    <= 8'h0;
     cb_pulse <= 1'b0;
   end else begin
@@ -110,7 +110,6 @@ always @(posedge CLK or negedge RST_N) begin
       end
       else if (is_cc)  cc_r   <= cpu_din;
       else if (is_cd)  cd_r   <= cpu_din;
-      else if (is_led) leds_r <= cpu_din;
     end
   end
 end
@@ -126,11 +125,10 @@ assign control_a          = ca_r;
 assign control_b          = cb_r;
 assign control_c          = cc_r;
 assign control_d          = cd_r;
-// LED status exposed to the mirror:
-//   bit0 (yellow / groups)  = $61FE bit0 -- the BIOS blink output (fast=A,
-//                             slow=B, solid=both, 0=none)
-//   bit1 (red / trainer)    = $086000 bit1 (trainer; not masked by the handler)
-assign leds               = {6'b0, leds_r[1], grp_r[0]};
+// LED status exposed to the mirror -- both bits from the live $61FE blink:
+//   bit0 (group LED)   = $61FE bit0 (fast=A, slow=B, solid=both, 0=none)
+//   bit1 (trainer LED) = $61FE bit1 (slow=many candidates, fast=one found)
+assign leds               = {6'b0, grp_r[1], grp_r[0]};
 assign control_b_just_set = cb_pulse;
 
 endmodule
