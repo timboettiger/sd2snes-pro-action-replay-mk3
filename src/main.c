@@ -565,25 +565,22 @@ int main(void) {
            *                       the combo indicator (Select+L on / Select+R off).
            * Suppressed while MSU-1 streaming is active so we do not fight
            * the SD-activity indicator. */
-          static uint8_t parmk3_blink_phase = 0;
-          /* Gate on has_par_mk3 (set by parmk3_apply at load, stable for the
-           * whole session). The status LEDs use a fixed, always-visible
-           * brightness via *bright() directly -- the global led_brightness can
-           * be set very dim (e.g. 5 -> ~0.9% duty), which is invisible as a
-           * steady light. red <- MK3 left LED, gold <- MK3 right LED,
-           * green <- cheats actually applying (solid), MK3 menu (blink). */
+          /* PAR MK3 status LEDs, mirrored at the user-configured PAR brightness
+           * (parmk3_led_brightness, separate from the global led_brightness).
+           * Gated on has_par_mk3 (set at load, stable for the session).
+           *   green (rdy)   : solid while cheats genuinely apply AND PAR is
+           *                   enabled AND the BIOS is loaded
+           *   yellow (write): MK3 LED 1 ($086000 bit0) -- parameter groups
+           *                   (BIOS drives it: blink A / slow-blink B / solid both)
+           *   red (read)    : MK3 LED 2 ($086000 bit1) -- trainer status */
           if(romprops.has_par_mk3 && CFG.parmk3_led_visible && !romprops.has_msu1) {
             uint8_t st = fpga_get_parmk3_status();
-            uint8_t mode = (st & PARMK3_STATUS_MODE_MASK) >> PARMK3_STATUS_MODE_SHIFT;
+            uint8_t bright = CFG.parmk3_led_brightness;
             STM.parmk3_leds = st & PARMK3_STATUS_LEDS_MASK;
-            readbright((st & 1)        ? PARMK3_LED_BRIGHT : 0);
-            writebright(((st >> 1) & 1) ? PARMK3_LED_BRIGHT : 0);
-            if(mode == 0) {               /* MK3 menu: blink green */
-              parmk3_blink_phase ^= 1;
-              rdybright(parmk3_blink_phase ? PARMK3_LED_BRIGHT : 0);
-            } else {                      /* game: solid green only while cheats truly apply */
-              rdybright((st & PARMK3_STATUS_CHEATS_ON) ? PARMK3_LED_BRIGHT : 0);
-            }
+            rdybright(((st & PARMK3_STATUS_CHEATS_ON) && CFG.enable_par
+                       && STM.parmk3_bios_loaded) ? bright : 0);   /* green: cheats active */
+            writebright((st & 1)        ? bright : 0);             /* yellow: groups (LED 1) */
+            readbright(((st >> 1) & 1)  ? bright : 0);             /* red: trainer  (LED 2) */
           }
           /* NOTE: the trainer combo is now handled entirely in the FPGA
            * (parmk3_pad_snoop -> combo_cheat_off), debounced and masking only

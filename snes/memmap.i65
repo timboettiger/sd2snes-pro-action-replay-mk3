@@ -144,6 +144,7 @@
 #define CFG_ENABLE_PAR                  CFG_ADDR+$00B6
 #define CFG_PARMK3_LED_VISIBLE          CFG_ADDR+$00B7
 #define CFG_PARMK3_TRAINER_BUTTON       CFG_ADDR+$00B8
+#define CFG_PARMK3_LED_BRIGHTNESS       CFG_ADDR+$00B9
 
 #define MENU_ENTRY_SIZE             23
 

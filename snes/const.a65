@@ -237,7 +237,8 @@ mtext_chip_gsu_speed              .byt "SuperFX speed", 0
 mtext_chip_msu1_volume_boost      .byt "MSU-1 volume boost", 0
 mtext_cfg_parmk3                  .byt "Pro Action Replay", 0
 mtext_parmk3_enable               .byt "Enable Pro Action Replay", 0
-mtext_parmk3_led_visible          .byt " ",129,"Show LEDs", 0
+mtext_parmk3_led_visible          .byt "Show LEDs", 0
+mtext_parmk3_led_bright           .byt " ",129,"Brightness", 0
 mtext_parmk3_trainer              .byt "Trainer Button", 0
 text_parmk3_select                .byt "Select", 0
 text_parmk3_start                 .byt "Start", 0
@@ -292,6 +293,7 @@ mdesc_chip_msu1_volume_boost      .byt "Set volume boost for MSU1 audio if your 
 mdesc_cfg_parmk3                  .byt "Pro Action Replay MK3 wrapper (requires par_mk3.bin)", 0
 mdesc_parmk3_enable               .byt "When on, every ROM launch boots through the MK3 BIOS (Cheats/Trainer)", 0
 mdesc_parmk3_led_visible          .byt "Mirror MK3 cart LEDs onto the sd2snes hardware LEDs while a game runs", 0
+mdesc_parmk3_led_bright           .byt "Brightness of the mirrored PAR status LEDs (green/yellow/red)", 0
 mdesc_parmk3_trainer              .byt "In-game cheat toggle: this button +L enables, +R disables cheats", 0
 mdesc_mm_parmk3                   .byt "Return to the PAR MK3 on-cart menu (only while a game runs)", 0
 mdesc_cx4_speed_fast              .byt "Run as fast as possible", 0

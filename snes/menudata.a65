@@ -830,6 +830,21 @@ menu_enttab_parmk3:
  .byt  ^(mfunc_isenabled_parmk3_bios-1)
 
  .byt  MTYPE_VALUE
+ .word !mtext_parmk3_led_bright
+ .byt  ^mtext_parmk3_led_bright
+ .word !kv_led_bright
+ .byt  ^kv_led_bright
+ .byt  OPTTYPE_KVBYTE
+ .word !CFG_PARMK3_LED_BRIGHTNESS
+ .byt  ^CFG_PARMK3_LED_BRIGHTNESS
+ .word !mdesc_parmk3_led_bright
+ .byt  ^mdesc_parmk3_led_bright
+ .byt  0,0,0
+ .byt  0,0,0
+ .word !(mfunc_isenabled_parmk3_bios-1)
+ .byt  ^(mfunc_isenabled_parmk3_bios-1)
+
+ .byt  MTYPE_VALUE
  .word !mtext_parmk3_trainer
  .byt  ^mtext_parmk3_trainer
  .word !kv_selectstart
