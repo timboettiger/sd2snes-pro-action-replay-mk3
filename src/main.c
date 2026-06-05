@@ -525,6 +525,7 @@ int main(void) {
 
     cmd=0;
     int loop_ticks = getticks();
+    int led_ticks = getticks();
     uint8_t usb_cmd = 0;
 // uint8_t snes_res;
     while(fpga_test() == FPGA_TEST_TOKEN) {
@@ -552,44 +553,30 @@ int main(void) {
       } else {
         if (resetState == SNES_RESET_SHORT) resetButtonState = 1;
         
+        /* PAR MK3 status-LED mirror -- own fast timer (~2 ticks) so the FPGA's
+         * live group-blink output ($61FE, snooped into leds[0]) is followed
+         * closely instead of aliased by the 25-tick main loop. The LEDs hang off
+         * the MCU (PWM pins), so the MCU has to read the FPGA status and drive
+         * them; polling often keeps the blink smooth. On this board readled is
+         * YELLOW and writeled is RED. Mirrored at the configured PAR brightness,
+         * gated on has_par_mk3 (stable for the session), off during MSU-1.
+         *   green  (rdy)   : cheats actually applying (AND par enabled AND bios)
+         *   yellow (read)  : parameter-group blink (leds[0] <- $61FE)
+         *   red    (write) : trainer status (leds[1] <- $086000 bit1) */
+        if(romprops.has_par_mk3 && CFG.parmk3_led_visible && !romprops.has_msu1
+           && getticks() > led_ticks + 2) {
+          led_ticks = getticks();
+          uint8_t st = fpga_get_parmk3_status();
+          uint8_t bright = CFG.parmk3_led_brightness;
+          STM.parmk3_leds = st & PARMK3_STATUS_LEDS_MASK;
+          rdybright(((st & PARMK3_STATUS_CHEATS_ON) && CFG.enable_par
+                     && STM.parmk3_bios_loaded) ? bright : 0);   /* green: cheats */
+          readbright((st & 1)         ? bright : 0);             /* yellow: groups */
+          writebright(((st >> 1) & 1) ? bright : 0);             /* red: trainer */
+        }
+
         if(getticks() > loop_ticks + 25) {
           loop_ticks = getticks();
- //         sram_reliable();
-          /* Pro Action Replay MK3: mirror the MK3 cart LEDs onto the
-           * sd2snes hardware LEDs while the wrapper is active.
-           *   readled  (red)   <- MK3 left  LED  (bit0 of $086000)
-           *   writeled (gold)  <- MK3 right LED  (bit1)
-           *   rdyled   (green) <- cheats actually applying: solid=on, off=off,
-           *                       blink=MK3 menu. Reflects the live trainer-combo
-           *                       toggle, not just the FSM mode, so it doubles as
-           *                       the combo indicator (Select+L on / Select+R off).
-           * Suppressed while MSU-1 streaming is active so we do not fight
-           * the SD-activity indicator. */
-          /* PAR MK3 status LEDs, mirrored at the user-configured PAR brightness
-           * (parmk3_led_brightness, separate from the global led_brightness).
-           * Gated on has_par_mk3 (set at load, stable for the session).
-           *   green (rdy)   : solid while cheats genuinely apply AND PAR is
-           *                   enabled AND the BIOS is loaded
-           *   yellow (write): MK3 LED 1 ($086000 bit0) -- parameter groups
-           *                   (BIOS drives it: blink A / slow-blink B / solid both)
-           *   red (read)    : MK3 LED 2 ($086000 bit1) -- trainer status */
-          if(romprops.has_par_mk3 && CFG.parmk3_led_visible && !romprops.has_msu1) {
-            uint8_t st = fpga_get_parmk3_status();
-            uint8_t bright = CFG.parmk3_led_brightness;
-            STM.parmk3_leds = st & PARMK3_STATUS_LEDS_MASK;
-            rdybright(((st & PARMK3_STATUS_CHEATS_ON) && CFG.enable_par
-                       && STM.parmk3_bios_loaded) ? bright : 0);   /* green: cheats active */
-            /* On this board readled is the YELLOW LED and writeled is RED
-             * (verified live: FPGA leds0=groups=1 lit the red one). So:
-             *   yellow (readled)  <- leds[0] = parameter groups ($61FC)
-             *   red    (writeled) <- leds[1] = trainer ($086000 bit1) */
-            readbright((st & 1)         ? bright : 0);             /* yellow: groups (LED 1) */
-            writebright(((st >> 1) & 1) ? bright : 0);             /* red: trainer  (LED 2) */
-          }
-          /* NOTE: the trainer combo is now handled entirely in the FPGA
-           * (parmk3_pad_snoop -> combo_cheat_off), debounced and masking only
-           * the interceptor. No per-frame MCU SRAM writes -- those raced the
-           * SNES on the PSRAM bus and corrupted whatever they touched. */
           printf("%s ", get_cic_statename(get_cic_state()));
           cmd=snes_main_loop();
           if (usb_cmd && !cmd) cmd = usb_cmd;

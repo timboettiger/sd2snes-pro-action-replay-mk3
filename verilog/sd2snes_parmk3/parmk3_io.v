@@ -57,10 +57,12 @@ wire is_cb   = (SNES_ADDR == 24'h10003C);
 wire is_cc   = (SNES_ADDR == 24'h206000);
 wire is_cd   = (SNES_ADDR == 24'h008000);
 wire is_led  = (SNES_ADDR == 24'h086000);
-// The PAR-NMI handler keeps the real group-LED status in MK3 SRAM at its DP
-// $6100 + $FC = $00:61FC (the $086000 register write masks bit0 away, so it is
-// unusable). Snoop that write so the FPGA sees which groups are active.
-wire is_grp  = (SNES_ADDR == 24'h0061FC);
+// The PAR-NMI handler keeps the live group-LED output in MK3 SRAM at its DP
+// $6100 + $FE = $00:61FE. This is the *blink* output ($086000 masks bit0 away,
+// so that register is unusable): bit0 toggles fast for group A, slow for group
+// B, stays solid for both, and is 0 when no group is active. Snoop it so the
+// FPGA mirrors the authentic blink onto the yellow LED.
+wire is_grp  = (SNES_ADDR == 24'h0061FE);
 
 wire [2:0] slot_index = SNES_ADDR[4:2];
 wire [1:0] slot_byte  = SNES_ADDR[1:0];
@@ -125,9 +127,10 @@ assign control_b          = cb_r;
 assign control_c          = cc_r;
 assign control_d          = cd_r;
 // LED status exposed to the mirror:
-//   bit0 (yellow / groups)  = any parameter group active ($61FC != 0)
+//   bit0 (yellow / groups)  = $61FE bit0 -- the BIOS blink output (fast=A,
+//                             slow=B, solid=both, 0=none)
 //   bit1 (red / trainer)    = $086000 bit1 (trainer; not masked by the handler)
-assign leds               = {6'b0, leds_r[1], (grp_r != 8'h0)};
+assign leds               = {6'b0, leds_r[1], grp_r[0]};
 assign control_b_just_set = cb_pulse;
 
 endmodule
