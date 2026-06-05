@@ -567,32 +567,22 @@ int main(void) {
            * the SD-activity indicator. */
           static uint8_t parmk3_blink_phase = 0;
           /* Gate on has_par_mk3 (set by parmk3_apply at load, stable for the
-           * whole session) rather than parmk3_wrapper_active -- the latter was
-           * apparently 0 here, which is exactly what the debug snapshot will
-           * confirm. */
-          if(romprops.has_par_mk3 && !romprops.has_msu1) {
+           * whole session). The status LEDs use a fixed, always-visible
+           * brightness via *bright() directly -- the global led_brightness can
+           * be set very dim (e.g. 5 -> ~0.9% duty), which is invisible as a
+           * steady light. red <- MK3 left LED, gold <- MK3 right LED,
+           * green <- cheats actually applying (solid), MK3 menu (blink). */
+          if(romprops.has_par_mk3 && CFG.parmk3_led_visible && !romprops.has_msu1) {
             uint8_t st = fpga_get_parmk3_status();
             uint8_t mode = (st & PARMK3_STATUS_MODE_MASK) >> PARMK3_STATUS_MODE_SHIFT;
-            /* DEBUG snapshot over the clean SPI path (config 0x05/0x05):
-             *  b0 wrapper_active  b1 led_visible  b2 has_par_mk3  b3 has_msu1
-             *  b4 poll-reached    b6:5 mode       b7 cheats_active */
-            fpga_set_parmk3_dbg((STM.parmk3_wrapper_active ? 0x01 : 0)
-                              | (CFG.parmk3_led_visible    ? 0x02 : 0)
-                              | (romprops.has_par_mk3      ? 0x04 : 0)
-                              | (romprops.has_msu1         ? 0x08 : 0)
-                              | 0x10
-                              | ((mode & 0x03) << 5)
-                              | ((st & PARMK3_STATUS_CHEATS_ON) ? 0x80 : 0));
-            if(CFG.parmk3_led_visible) {
-              readled(st & 1);
-              writeled((st >> 1) & 1);
-              STM.parmk3_leds = st & PARMK3_STATUS_LEDS_MASK;
-              if(mode == 0) {               /* MK3 menu: blink */
-                parmk3_blink_phase ^= 1;
-                rdyled(parmk3_blink_phase);
-              } else {                      /* game: solid only while cheats truly apply */
-                rdyled((st & PARMK3_STATUS_CHEATS_ON) ? 1 : 0);
-              }
+            STM.parmk3_leds = st & PARMK3_STATUS_LEDS_MASK;
+            readbright((st & 1)        ? PARMK3_LED_BRIGHT : 0);
+            writebright(((st >> 1) & 1) ? PARMK3_LED_BRIGHT : 0);
+            if(mode == 0) {               /* MK3 menu: blink green */
+              parmk3_blink_phase ^= 1;
+              rdybright(parmk3_blink_phase ? PARMK3_LED_BRIGHT : 0);
+            } else {                      /* game: solid green only while cheats truly apply */
+              rdybright((st & PARMK3_STATUS_CHEATS_ON) ? PARMK3_LED_BRIGHT : 0);
             }
           }
           /* NOTE: the trainer combo is now handled entirely in the FPGA
