@@ -113,6 +113,7 @@
 #define PARMK3_STATUS_LEDS_MASK  (0x03)
 #define PARMK3_STATUS_MODE_SHIFT (2)
 #define PARMK3_STATUS_MODE_MASK  (0x0C)
+#define PARMK3_STATUS_CHEATS_ON  (0x10)  /* interceptor live (incl. combo toggle) */
 #define FPGA_CMD_TEST            (0xf0)
 #define FPGA_CMD_GETSTATUS       (0xf1)
 #define FPGA_CMD_MSUGETADDR      (0xf2)

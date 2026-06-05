@@ -120,6 +120,7 @@ module mcu_cmd(
   // Driven from parmk3_top via main.v.
   input [7:0] parmk3_leds_in,
   input [1:0] parmk3_mode_in,
+  input parmk3_cheats_active_in,     // 1 = interceptor applying cheats now (status bit 4)
   input [15:0] parmk3_pad_dbg_in,    // DEBUG: raw controller-1 snoop (0xDC hi / 0xDB lo)
   input [7:0] parmk3_rd4219_cnt_in,  // DEBUG: auto-joypad read count (0xDA)
   input [7:0] parmk3_rd4016_cnt_in   // DEBUG: manual read count (0xD9)
@@ -551,8 +552,9 @@ always @(posedge clk) begin
       // resolved mode. Layout:
       //   bits [1:0] = LEDs (bit0 = left red, bit1 = right red)
       //   bits [3:2] = effective_mode (0=Menu, 1=Cheats, 2=NoCheats)
-      //   bits [7:4] = reserved
-      MCU_DATA_IN_BUF <= {4'b0, parmk3_mode_in, parmk3_leds_in[1:0]};
+      //   bit  [4]   = cheats_active (interceptor live, incl. combo toggle)
+      //   bits [7:5] = reserved
+      MCU_DATA_IN_BUF <= {3'b0, parmk3_cheats_active_in, parmk3_mode_in, parmk3_leds_in[1:0]};
     else if (cmd_data[7:0] == 8'hDC)
       MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[15:8];   // DEBUG: pad high byte
     else if (cmd_data[7:0] == 8'hDB)

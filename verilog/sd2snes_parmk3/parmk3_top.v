@@ -53,6 +53,7 @@ module parmk3_top(
   /* Soft reset & status */
   output snes_soft_reset,
   output [1:0] effective_mode,
+  output cheats_active,          // 1 = interceptor actually applying cheats now
   output [7:0] leds,
   output [15:0] pad_dbg,         // DEBUG: raw captured controller-1 state
   output [7:0] rd4219_cnt,       // DEBUG: auto-joypad read count
@@ -129,6 +130,10 @@ always @(posedge CLK or negedge RST_N) begin
   else if (cheat_off_pulse) combo_cheat_off <= 1'b1;
   else if (cheat_on_pulse)  combo_cheat_off <= 1'b0;
 end
+
+// True only while the interceptor is genuinely applying cheats (game mode AND
+// not masked off by the combo) — the signal the "cheats on" LED should follow.
+assign cheats_active = (effective_mode == 2'd1) & ~combo_cheat_off;
 
 parmk3_mapper u_mapper(
   .CLK(CLK),

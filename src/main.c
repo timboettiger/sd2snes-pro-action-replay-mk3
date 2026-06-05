@@ -559,7 +559,10 @@ int main(void) {
            * sd2snes hardware LEDs while the wrapper is active.
            *   readled  (red)   <- MK3 left  LED  (bit0 of $086000)
            *   writeled (gold)  <- MK3 right LED  (bit1)
-           *   rdyled   (green) <- FSM mode: solid=Cheats, blink=Menu, off=NoCheats
+           *   rdyled   (green) <- cheats actually applying: solid=on, off=off,
+           *                       blink=MK3 menu. Reflects the live trainer-combo
+           *                       toggle, not just the FSM mode, so it doubles as
+           *                       the combo indicator (Select+L on / Select+R off).
            * Suppressed while MSU-1 streaming is active so we do not fight
            * the SD-activity indicator. */
           static uint8_t parmk3_blink_phase = 0;
@@ -569,10 +572,11 @@ int main(void) {
             writeled((st >> 1) & 1);
             uint8_t mode = (st & PARMK3_STATUS_MODE_MASK) >> PARMK3_STATUS_MODE_SHIFT;
             STM.parmk3_leds = st & PARMK3_STATUS_LEDS_MASK;
-            switch(mode) {
-              case 0: parmk3_blink_phase ^= 1; rdyled(parmk3_blink_phase); break; /* MENU */
-              case 1: rdyled(1); break;                                           /* CHEATS_ACTIVE */
-              default: rdyled(0); break;                                          /* NO_CHEATS */
+            if(mode == 0) {                 /* MK3 menu: blink */
+              parmk3_blink_phase ^= 1;
+              rdyled(parmk3_blink_phase);
+            } else {                        /* game: solid only while cheats truly apply */
+              rdyled((st & PARMK3_STATUS_CHEATS_ON) ? 1 : 0);
             }
           }
           /* NOTE: the trainer combo is now handled entirely in the FPGA

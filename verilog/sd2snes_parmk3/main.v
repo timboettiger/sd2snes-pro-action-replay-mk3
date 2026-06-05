@@ -680,6 +680,7 @@ mcu_cmd snes_mcu_cmd(
   .parmk3_trainer_button_out(parmk3_trainer_button),
   .parmk3_leds_in(parmk3_leds),
   .parmk3_mode_in(parmk3_mode),
+  .parmk3_cheats_active_in(parmk3_cheats_active),
   .parmk3_pad_dbg_in(parmk3_pad_dbg),
   .parmk3_rd4219_cnt_in(parmk3_rd4219_cnt),
   .parmk3_rd4016_cnt_in(parmk3_rd4016_cnt)
@@ -753,6 +754,7 @@ wire [1:0]  parmk3_switch_pos;
 wire        parmk3_par_menu;
 wire        parmk3_game_loaded;
 wire        parmk3_trainer_button;
+wire        parmk3_cheats_active;
 wire [15:0] parmk3_pad_dbg;
 wire [7:0]  parmk3_rd4219_cnt;
 wire [7:0]  parmk3_rd4016_cnt;
@@ -779,6 +781,7 @@ parmk3_top snes_parmk3(
   .bus_override_data(parmk3_bus_override_data),
   .snes_soft_reset(parmk3_soft_reset),
   .effective_mode(parmk3_mode),
+  .cheats_active(parmk3_cheats_active),
   .leds(parmk3_leds),
   .pad_dbg(parmk3_pad_dbg),
   .rd4219_cnt(parmk3_rd4219_cnt),
