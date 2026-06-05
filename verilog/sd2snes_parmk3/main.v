@@ -683,7 +683,10 @@ mcu_cmd snes_mcu_cmd(
   .parmk3_cheats_active_in(parmk3_cheats_active),
   .parmk3_pad_dbg_in(parmk3_pad_dbg),
   .parmk3_rd4219_cnt_in(parmk3_rd4219_cnt),
-  .parmk3_rd4016_cnt_in(parmk3_rd4016_cnt)
+  .parmk3_rd4016_cnt_in(parmk3_rd4016_cnt),
+  .parmk3_nmi5_dbg_in(parmk3_nmi5_dbg),
+  .parmk3_nmi6_dbg_in(parmk3_nmi6_dbg),
+  .parmk3_state_dbg_in(parmk3_state_dbg)
 );
 
 address snes_addr(
@@ -758,6 +761,9 @@ wire        parmk3_cheats_active;
 wire [15:0] parmk3_pad_dbg;
 wire [7:0]  parmk3_rd4219_cnt;
 wire [7:0]  parmk3_rd4016_cnt;
+wire [7:0]  parmk3_nmi5_dbg;
+wire [7:0]  parmk3_nmi6_dbg;
+wire [7:0]  parmk3_state_dbg;
 parmk3_top snes_parmk3(
   .CLK(CLK2),
   .RST_N(~SNES_reset_strobe),
@@ -785,7 +791,10 @@ parmk3_top snes_parmk3(
   .leds(parmk3_leds),
   .pad_dbg(parmk3_pad_dbg),
   .rd4219_cnt(parmk3_rd4219_cnt),
-  .rd4016_cnt(parmk3_rd4016_cnt)
+  .rd4016_cnt(parmk3_rd4016_cnt),
+  .nmi5_dbg(parmk3_nmi5_dbg),
+  .nmi6_dbg(parmk3_nmi6_dbg),
+  .state_dbg(parmk3_state_dbg)
 );
 
 reg pad_latch = 0;

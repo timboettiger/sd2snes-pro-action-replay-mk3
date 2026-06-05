@@ -123,7 +123,10 @@ module mcu_cmd(
   input parmk3_cheats_active_in,     // 1 = interceptor applying cheats now (status bit 4)
   input [15:0] parmk3_pad_dbg_in,    // DEBUG: raw controller-1 snoop (0xDC hi / 0xDB lo)
   input [7:0] parmk3_rd4219_cnt_in,  // DEBUG: auto-joypad read count (0xDA)
-  input [7:0] parmk3_rd4016_cnt_in   // DEBUG: manual read count (0xD9)
+  input [7:0] parmk3_rd4016_cnt_in,  // DEBUG: manual read count (0xD9)
+  input [7:0] parmk3_nmi5_dbg_in,    // DEBUG: NMI vector LSB (slot5) via config 0x05/0x06
+  input [7:0] parmk3_nmi6_dbg_in,    // DEBUG: NMI vector MSB (slot6) via config 0x05/0x07
+  input [7:0] parmk3_state_dbg_in    // DEBUG: core state via config 0x05/0x08
 );
 
 initial begin
@@ -588,6 +591,9 @@ always @(posedge clk) begin
               8'h02:   MCU_DATA_IN_BUF <= parmk3_rd4219_cnt_in;
               8'h03:   MCU_DATA_IN_BUF <= parmk3_rd4016_cnt_in;
               8'h05:   MCU_DATA_IN_BUF <= mcu_dbg_r;   // DEBUG: MCU-side state snapshot
+              8'h06:   MCU_DATA_IN_BUF <= parmk3_nmi5_dbg_in;   // DEBUG: NMI vec LSB (slot5)
+              8'h07:   MCU_DATA_IN_BUF <= parmk3_nmi6_dbg_in;   // DEBUG: NMI vec MSB (slot6)
+              8'h08:   MCU_DATA_IN_BUF <= parmk3_state_dbg_in;  // DEBUG: core state
               default: MCU_DATA_IN_BUF <= 8'h0;
             endcase
           end else

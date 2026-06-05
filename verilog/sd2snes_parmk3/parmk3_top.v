@@ -57,7 +57,10 @@ module parmk3_top(
   output [7:0] leds,
   output [15:0] pad_dbg,         // DEBUG: raw captured controller-1 state
   output [7:0] rd4219_cnt,       // DEBUG: auto-joypad read count
-  output [7:0] rd4016_cnt        // DEBUG: manual read count
+  output [7:0] rd4016_cnt,       // DEBUG: manual read count
+  output [7:0] nmi5_dbg,         // DEBUG: slot5[7:0] = NMI vector LSB
+  output [7:0] nmi6_dbg,         // DEBUG: slot6[7:0] = NMI vector MSB
+  output [7:0] state_dbg         // DEBUG: {slot6!=0,slot5!=0,leds[1:0],mode[1:0],ctrlC0,ctrlB}
 );
 
 wire [31:0] slot0, slot1, slot2, slot3, slot4, slot5, slot6;
@@ -125,6 +128,15 @@ parmk3_pad_snoop u_pad(
 // interceptor runs purely off the mode and the LED follows that. cheat_on/off
 // pulses stay generated (pad_dbg/counters feed the diagnostic) but unconnected.
 assign cheats_active = (effective_mode == 2'd1);
+
+// DEBUG: expose the NMI-hook slot bytes and core state so the firmware can read
+// (via config 0x05 idx 6/7/8) whether the BIOS programmed the NMI vector hook
+// (slot5/6 = "always NMI hook" per the docs) and what the live mode/LED/control
+// state is during gameplay.
+assign nmi5_dbg  = slot5[7:0];
+assign nmi6_dbg  = slot6[7:0];
+assign state_dbg = {(slot6 != 32'h0), (slot5 != 32'h0), leds[1:0],
+                    effective_mode, control_c[0], control_b};
 
 parmk3_mapper u_mapper(
   .CLK(CLK),
