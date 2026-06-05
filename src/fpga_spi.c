@@ -527,6 +527,14 @@ uint8_t fpga_get_parmk3_status(void) {
   return status;
 }
 
+/* DEBUG: write the MCU-side state snapshot byte (read back via config 0x05/0x05). */
+void fpga_set_parmk3_dbg(uint8_t val) {
+  FPGA_SELECT();
+  FPGA_TX_BYTE(FPGA_CMD_PARMK3_DBG_WR);
+  FPGA_TX_BYTE(val);
+  FPGA_DESELECT();
+}
+
 /* DEBUG: read a single parmk3 debug status byte (pad bytes / read counters). */
 uint8_t fpga_get_parmk3_dbgbyte(uint8_t cmd) {
   uint8_t v;

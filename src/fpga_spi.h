@@ -103,6 +103,7 @@
 #define FPGA_CMD_PARMK3_PAD_LO   (0xdb)   /* DEBUG: raw controller-1 snoop, low byte */
 #define FPGA_CMD_PARMK3_CNT4219  (0xda)   /* DEBUG: auto-joypad read count */
 #define FPGA_CMD_PARMK3_CNT4016  (0xd9)   /* DEBUG: manual read count */
+#define FPGA_CMD_PARMK3_DBG_WR   (0xdd)   /* DEBUG: MCU writes a state byte (read via config 0x05/0x05) */
 #define PARMK3_SWITCH_NOCHEATS   (0)
 #define PARMK3_SWITCH_CHEATS     (1)
 #define PARMK3_SWITCH_MENU       (2)
@@ -168,6 +169,7 @@ void fpga_set_parmk3_ctrl(uint8_t switch_pos, uint8_t par_menu, uint8_t game_loa
 uint8_t fpga_get_parmk3_status(void);
 uint16_t fpga_get_parmk3_pad(void);
 uint8_t fpga_get_parmk3_dbgbyte(uint8_t cmd);
+void fpga_set_parmk3_dbg(uint8_t val);
 void fpga_set_chipfeat(uint16_t feat);
 uint8_t fpga_read_config(uint8_t group, uint8_t index);
 void fpga_write_config(uint8_t group, uint8_t index, uint8_t value, uint8_t invmask);

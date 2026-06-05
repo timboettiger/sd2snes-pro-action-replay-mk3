@@ -161,6 +161,7 @@ reg [7:0] value_out_buf; initial value_out_buf = 8'hFF;
 reg [7:0] invmask_out_buf; initial invmask_out_buf = 8'hFF;
 reg [7:0] group_read_buf; initial group_read_buf = 8'hFF;
 reg [7:0] index_read_buf; initial index_read_buf = 8'hFF;
+reg [7:0] mcu_dbg_r;      initial mcu_dbg_r = 8'h00;   // DEBUG: MCU-side state snapshot
 reg [7:0] temp_read_buf; initial temp_read_buf = 8'hFF;
 
 reg reg_we_buf; initial reg_we_buf = 0;
@@ -409,6 +410,8 @@ always @(posedge clk) begin
         endcase
       8'hee:
         region_out <= param_data[0];
+      8'hdd:
+        mcu_dbg_r <= param_data;   // DEBUG: MCU-side state snapshot (read via config 0x05/0x05)
       8'hde: begin
         /* FPGA_CMD_PARMK3_CTRL — single parameter byte:
          *   bits [1:0] = switch_pos (0=NoCheats, 1=Cheats, 2=MK3 Menu)
@@ -584,6 +587,7 @@ always @(posedge clk) begin
               8'h01:   MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[7:0];
               8'h02:   MCU_DATA_IN_BUF <= parmk3_rd4219_cnt_in;
               8'h03:   MCU_DATA_IN_BUF <= parmk3_rd4016_cnt_in;
+              8'h05:   MCU_DATA_IN_BUF <= mcu_dbg_r;   // DEBUG: MCU-side state snapshot
               default: MCU_DATA_IN_BUF <= 8'h0;
             endcase
           end else
