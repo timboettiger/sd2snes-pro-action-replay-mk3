@@ -29,6 +29,7 @@ module parmk3_top(
 
   /* Controller snoop (live cheat toggle) */
   input  [7:0]  snes_data_in,    // read data, valid at snes_rd_end
+  input  snes_rd_start,
   input  snes_rd_end,
   input  snes_wr_end,
 
@@ -53,7 +54,9 @@ module parmk3_top(
   output snes_soft_reset,
   output [1:0] effective_mode,
   output [7:0] leds,
-  output [15:0] pad_dbg          // DEBUG: raw captured controller-1 state
+  output [15:0] pad_dbg,         // DEBUG: raw captured controller-1 state
+  output [7:0] rd4219_cnt,       // DEBUG: auto-joypad read count
+  output [7:0] rd4016_cnt        // DEBUG: manual read count
 );
 
 wire [31:0] slot0, slot1, slot2, slot3, slot4, slot5, slot6;
@@ -102,14 +105,17 @@ parmk3_pad_snoop u_pad(
   .CLK(CLK),
   .RST_N(RST_N),
   .SNES_ADDR(SNES_ADDR),
-  .SNES_DATA(snes_data_in),
-  .rd_strobe(snes_rd_end),
+  .SNES_DATA(bus_data),               // raw inout bus (same source parmk3_io uses)
+  .rd_start(snes_rd_start),
+  .rd_end(snes_rd_end),
   .wr_strobe(snes_wr_end),
   .enable(control_b),                 // only while the game runs
   .trainer_button(mcu_trainer_button),
   .cheat_on_pulse(cheat_on_pulse),
   .cheat_off_pulse(cheat_off_pulse),
-  .pad_dbg(pad_dbg)
+  .pad_dbg(pad_dbg),
+  .rd4219_cnt(rd4219_cnt),
+  .rd4016_cnt(rd4016_cnt)
 );
 
 parmk3_mapper u_mapper(

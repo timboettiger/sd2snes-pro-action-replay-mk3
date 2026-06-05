@@ -120,7 +120,9 @@ module mcu_cmd(
   // Driven from parmk3_top via main.v.
   input [7:0] parmk3_leds_in,
   input [1:0] parmk3_mode_in,
-  input [15:0] parmk3_pad_dbg_in   // DEBUG: raw controller-1 snoop (0xDC hi / 0xDB lo)
+  input [15:0] parmk3_pad_dbg_in,    // DEBUG: raw controller-1 snoop (0xDC hi / 0xDB lo)
+  input [7:0] parmk3_rd4219_cnt_in,  // DEBUG: auto-joypad read count (0xDA)
+  input [7:0] parmk3_rd4016_cnt_in   // DEBUG: manual read count (0xD9)
 );
 
 initial begin
@@ -555,6 +557,10 @@ always @(posedge clk) begin
       MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[15:8];   // DEBUG: pad high byte
     else if (cmd_data[7:0] == 8'hDB)
       MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[7:0];    // DEBUG: pad low byte
+    else if (cmd_data[7:0] == 8'hDA)
+      MCU_DATA_IN_BUF <= parmk3_rd4219_cnt_in;      // DEBUG: auto-joypad read count
+    else if (cmd_data[7:0] == 8'hD9)
+      MCU_DATA_IN_BUF <= parmk3_rd4016_cnt_in;      // DEBUG: manual read count
     else if (cmd_data[7:0] == 8'hD1)
       MCU_DATA_IN_BUF <= snescmd_data_in;
     else if (cmd_data[7:0] == 8'hF9)

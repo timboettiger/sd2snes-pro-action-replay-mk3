@@ -527,17 +527,20 @@ uint8_t fpga_get_parmk3_status(void) {
   return status;
 }
 
+/* DEBUG: read a single parmk3 debug status byte (pad bytes / read counters). */
+uint8_t fpga_get_parmk3_dbgbyte(uint8_t cmd) {
+  uint8_t v;
+  FPGA_SELECT();
+  FPGA_TX_BYTE(cmd);
+  v = FPGA_TXRX_BYTE(0x00);
+  FPGA_DESELECT();
+  return v;
+}
+
 /* DEBUG: read the raw controller-1 state captured by parmk3_pad_snoop. */
 uint16_t fpga_get_parmk3_pad(void) {
-  uint8_t hi, lo;
-  FPGA_SELECT();
-  FPGA_TX_BYTE(FPGA_CMD_PARMK3_PAD_HI);
-  hi = FPGA_TXRX_BYTE(0x00);
-  FPGA_DESELECT();
-  FPGA_SELECT();
-  FPGA_TX_BYTE(FPGA_CMD_PARMK3_PAD_LO);
-  lo = FPGA_TXRX_BYTE(0x00);
-  FPGA_DESELECT();
+  uint8_t hi = fpga_get_parmk3_dbgbyte(FPGA_CMD_PARMK3_PAD_HI);
+  uint8_t lo = fpga_get_parmk3_dbgbyte(FPGA_CMD_PARMK3_PAD_LO);
   return ((uint16_t)hi << 8) | lo;
 }
 
