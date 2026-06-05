@@ -575,18 +575,10 @@ int main(void) {
               default: rdyled(0); break;                                          /* NO_CHEATS */
             }
           }
-          /* DEBUG: mirror the controller-1 snoop + read-style counters into the
-           * MCU status SRAM so they can be read over USB ("read snes 0xFF1109 4")
-           * to verify pad capture before the live trainer combo is re-enabled.
-           *   +9  pad high byte   +10 pad low byte
-           *   +11 $4218/9 (auto-joy) read count   +12 $4016 (manual) read count */
-          if(STM.parmk3_wrapper_active) {
-            uint16_t parmk3_pad = fpga_get_parmk3_pad();
-            sram_writebyte((uint8_t)(parmk3_pad >> 8), SRAM_MCU_STATUS_ADDR + 9);
-            sram_writebyte((uint8_t)(parmk3_pad & 0xff), SRAM_MCU_STATUS_ADDR + 10);
-            sram_writebyte(fpga_get_parmk3_dbgbyte(FPGA_CMD_PARMK3_CNT4219), SRAM_MCU_STATUS_ADDR + 11);
-            sram_writebyte(fpga_get_parmk3_dbgbyte(FPGA_CMD_PARMK3_CNT4016), SRAM_MCU_STATUS_ADDR + 12);
-          }
+          /* NOTE: the trainer combo is now handled entirely in the FPGA
+           * (parmk3_pad_snoop -> combo_cheat_off), debounced and masking only
+           * the interceptor. No per-frame MCU SRAM writes -- those raced the
+           * SNES on the PSRAM bus and corrupted whatever they touched. */
           printf("%s ", get_cic_statename(get_cic_state()));
           cmd=snes_main_loop();
           if (usb_cmd && !cmd) cmd = usb_cmd;

@@ -121,18 +121,37 @@ wire r_held       = pad[4];
 wire combo_on     = enable & trainer_held & l_held & ~r_held;
 wire combo_off    = enable & trainer_held & r_held & ~l_held;
 
-reg combo_on_q, combo_off_q;
+// Debounce: the combo must hold steady for ~49 ms (2^20 @ 21.477 MHz) before it
+// fires, and fires exactly once until released. A captured-bus glitch never
+// stays valid that long, so noise on the snoop cannot produce a false toggle;
+// a real held combo easily does. Counters reset the instant the combo drops.
+localparam [19:0] HOLD = 20'hFFFFE;
+reg [19:0] on_cnt, off_cnt;
 always @(posedge CLK or negedge RST_N) begin
   if (!RST_N) begin
-    combo_on_q      <= 1'b0;
-    combo_off_q     <= 1'b0;
+    on_cnt          <= 20'h0;
+    off_cnt         <= 20'h0;
     cheat_on_pulse  <= 1'b0;
     cheat_off_pulse <= 1'b0;
   end else begin
-    combo_on_q      <= combo_on;
-    combo_off_q     <= combo_off;
-    cheat_on_pulse  <= combo_on  & ~combo_on_q;
-    cheat_off_pulse <= combo_off & ~combo_off_q;
+    cheat_on_pulse  <= 1'b0;
+    cheat_off_pulse <= 1'b0;
+    if (combo_on) begin
+      if (on_cnt != 20'hFFFFF) begin
+        on_cnt <= on_cnt + 1'b1;
+        if (on_cnt == HOLD) cheat_on_pulse <= 1'b1;  // single pulse at threshold
+      end
+    end else begin
+      on_cnt <= 20'h0;
+    end
+    if (combo_off) begin
+      if (off_cnt != 20'hFFFFF) begin
+        off_cnt <= off_cnt + 1'b1;
+        if (off_cnt == HOLD) cheat_off_pulse <= 1'b1;
+      end
+    end else begin
+      off_cnt <= 20'h0;
+    end
   end
 end
 
