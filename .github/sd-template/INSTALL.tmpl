@@ -1,0 +1,41 @@
+PAR MK3 firmware for sd2snes / FX Pak Pro
+=========================================
+Version: __VERSION__
+
+INSTALL (easy)
+--------------
+1. Copy the "sd2snes" folder from this archive onto the ROOT of your SD card,
+   merging into the existing sd2snes folder (overwrite when prompted).
+2. Add the Pro Action Replay MK3 BIOS dump yourself: put "par_mk3.bin" into the
+   sd2snes folder (see the placeholder note inside it).
+3. Re-insert the card and power on.
+
+WHICH FIRMWARE RUNS?
+--------------------
+Both ship; the bootloader auto-picks the one for your hardware:
+  firmware.im3  ->  sd2snes (MK.III, LPC1768)
+  firmware.stm  ->  FX Pak Pro (STM32)
+
+CONTENTS
+--------
+  sd2snes/firmware.im3      sd2snes MK.III firmware
+  sd2snes/firmware.stm      FX Pak Pro firmware
+  sd2snes/fpga_parmk3.bi3   PAR MK3 FPGA core
+  sd2snes/fpga_mini.bi3     boot/mini FPGA core
+  sd2snes/menu.bin          menu ROM (sd2snes)
+  sd2snes/m3nu.bin          menu ROM (FX Pak Pro)
+
+BLANK CARD?
+-----------
+This is the PAR MK3 add-on build. The base support files (fpga_base.bi3, the
+DSP/CX4 ROM dumps, etc.) are NOT included. If you start from an empty card,
+install an official sd2snes / FX Pak Pro firmware release first, then copy this
+archive's sd2snes folder over it.
+
+USAGE
+-----
+Enable it under  Settings > Pro Action Replay > Enable Pro Action Replay.
+Every ROM you launch then boots through the MK3 BIOS (Cheats / Trainer).
+Per-game saves land in /sd2snes/saves/ :
+  <game>.srm     game battery save
+  <game>.mk3srm  MK3 cheat / trainer state

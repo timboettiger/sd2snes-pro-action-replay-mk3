@@ -47,9 +47,9 @@ jobs:
              bundle/fpga_parmk3.bi3 bundle/fpga_mini.bi3 \
              bundle/menu.bin bundle/m3nu.bin "$DEST/"
           # BIOS is copyrighted -> ship a clear placeholder, never the dump.
-          cp .github/release/_PUT_par_mk3.bin_HERE.txt "$DEST/"
+          cp .github/sd-template/par_mk3_placeholder.tmpl "$DEST/_PUT_par_mk3.bin_HERE.txt"
           # Version-stamped install guide at the archive root.
-          sed "s/__VERSION__/${VER}/" .github/release/INSTALL.txt > "$ROOT/INSTALL.txt"
+          sed "s/__VERSION__/${VER}/" .github/sd-template/INSTALL.tmpl > "$ROOT/INSTALL.txt"
           zip -r "${ROOT}.zip" "$ROOT"
           echo "zip=${ROOT}.zip" >> "$GITHUB_OUTPUT"
           # Any tag with a -suffix (v1.2.3-...) is a prerelease.
