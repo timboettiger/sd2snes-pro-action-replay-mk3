@@ -15,6 +15,7 @@ name: PAR MK3 bundle build
 
 on:
   workflow_dispatch:
+  workflow_call:          # reusable: the release workflow calls this to build the bundle
   push:
     branches: [feature/par-mk3-support]
 

@@ -1,0 +1,76 @@
+name: PAR MK3 release
+# Push a version tag to publish a GitHub (pre)release:
+#   v1.2.3        -> release      (e.g. git tag v1.2.3 && git push origin v1.2.3)
+#   v1.2.3-beta1  -> prerelease   (any -suffix makes it a prerelease)
+#
+# Both flavours attach a ready-to-copy SD-card layout (sd2snes-par-mk3-<tag>.zip)
+# plus the individual firmware/core/menu files. The build itself is the existing
+# parmk3-build.yml, reused via workflow_call so there is no duplication.
+
+on:
+  push:
+    tags:
+      # Glob (not regex): matches v1.2.3 AND v1.2.3-beta1. The release-vs-
+      # prerelease decision is made below from the -suffix.
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    uses: ./.github/workflows/parmk3-build.yml
+
+  release:
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download built bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: parmk3-bundle
+          path: bundle
+
+      - name: Assemble SD-card layout + zip
+        id: pack
+        run: |
+          set -e
+          VER="${GITHUB_REF_NAME}"
+          ROOT="sd2snes-par-mk3-${VER}"
+          DEST="$ROOT/sd2snes"
+          mkdir -p "$DEST"
+          # Everything the wrapper needs goes under sd2snes/ so the user just
+          # drops this folder onto the card root (merging the existing one).
+          cp bundle/firmware.im3 bundle/firmware.stm \
+             bundle/fpga_parmk3.bi3 bundle/fpga_mini.bi3 \
+             bundle/menu.bin bundle/m3nu.bin "$DEST/"
+          # BIOS is copyrighted -> ship a clear placeholder, never the dump.
+          cp .github/release/_PUT_par_mk3.bin_HERE.txt "$DEST/"
+          # Version-stamped install guide at the archive root.
+          sed "s/__VERSION__/${VER}/" .github/release/INSTALL.txt > "$ROOT/INSTALL.txt"
+          zip -r "${ROOT}.zip" "$ROOT"
+          echo "zip=${ROOT}.zip" >> "$GITHUB_OUTPUT"
+          # Any tag with a -suffix (v1.2.3-...) is a prerelease.
+          if [ "${VER#*-}" != "${VER}" ]; then
+            echo "prerelease=true"  >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "--- archive tree ---"; find "$ROOT" -print
+
+      - name: Publish (pre)release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: ${{ steps.pack.outputs.prerelease }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            ${{ steps.pack.outputs.zip }}
+            bundle/firmware.im3
+            bundle/firmware.stm
+            bundle/fpga_parmk3.bi3
+            bundle/fpga_mini.bi3
+            bundle/menu.bin
+            bundle/m3nu.bin
