@@ -916,7 +916,11 @@ uint8_t sram_reliable() {
   } else {
     result = 1;
   }
-  rdyled(result);
+  /* Don't touch the ready LED while the PAR MK3 wrapper owns it for the cheat
+   * status indicator -- this runs from snes_main_loop() every iteration and
+   * would otherwise stomp the green LED with the SRAM-check result (the cause
+   * of the "green LED flickers" report). */
+  if(!romprops.has_par_mk3) rdyled(result);
   return result;
 }
 
