@@ -119,7 +119,8 @@ module mcu_cmd(
   // PAR MK3 wrapper status read-back (FPGA_CMD_PARMK3_STATUS = 0xdf)
   // Driven from parmk3_top via main.v.
   input [7:0] parmk3_leds_in,
-  input [1:0] parmk3_mode_in
+  input [1:0] parmk3_mode_in,
+  input [15:0] parmk3_pad_dbg_in   // DEBUG: raw controller-1 snoop (0xDC hi / 0xDB lo)
 );
 
 initial begin
@@ -550,6 +551,10 @@ always @(posedge clk) begin
       //   bits [3:2] = effective_mode (0=Menu, 1=Cheats, 2=NoCheats)
       //   bits [7:4] = reserved
       MCU_DATA_IN_BUF <= {4'b0, parmk3_mode_in, parmk3_leds_in[1:0]};
+    else if (cmd_data[7:0] == 8'hDC)
+      MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[15:8];   // DEBUG: pad high byte
+    else if (cmd_data[7:0] == 8'hDB)
+      MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[7:0];    // DEBUG: pad low byte
     else if (cmd_data[7:0] == 8'hD1)
       MCU_DATA_IN_BUF <= snescmd_data_in;
     else if (cmd_data[7:0] == 8'hF9)

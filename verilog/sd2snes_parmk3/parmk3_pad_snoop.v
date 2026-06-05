@@ -39,8 +39,11 @@ module parmk3_pad_snoop(
   input  enable,                  // detect only while the game runs (control_b)
   input  trainer_button,          // 0 = Select, 1 = Start
   output reg cheat_on_pulse,
-  output reg cheat_off_pulse
+  output reg cheat_off_pulse,
+  output [15:0] pad_dbg           // raw captured controller-1 state (debug readback)
 );
+
+assign pad_dbg = pad;
 
 // Bank-agnostic decode of the B-bus controller registers ($00/$80 mirrors).
 wire sel_4016 = ({SNES_ADDR[22], SNES_ADDR[15:0]} == 17'h04016);

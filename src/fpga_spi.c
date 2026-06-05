@@ -527,6 +527,20 @@ uint8_t fpga_get_parmk3_status(void) {
   return status;
 }
 
+/* DEBUG: read the raw controller-1 state captured by parmk3_pad_snoop. */
+uint16_t fpga_get_parmk3_pad(void) {
+  uint8_t hi, lo;
+  FPGA_SELECT();
+  FPGA_TX_BYTE(FPGA_CMD_PARMK3_PAD_HI);
+  hi = FPGA_TXRX_BYTE(0x00);
+  FPGA_DESELECT();
+  FPGA_SELECT();
+  FPGA_TX_BYTE(FPGA_CMD_PARMK3_PAD_LO);
+  lo = FPGA_TXRX_BYTE(0x00);
+  FPGA_DESELECT();
+  return ((uint16_t)hi << 8) | lo;
+}
+
 uint8_t fpga_read_config(uint8_t group, uint8_t index) {
   uint8_t data;
   FPGA_SELECT();

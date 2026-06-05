@@ -575,6 +575,14 @@ int main(void) {
               default: rdyled(0); break;                                          /* NO_CHEATS */
             }
           }
+          /* DEBUG: mirror the raw controller-1 snoop into the MCU status SRAM so
+           * it can be read over USB ("read snes 0xFF1109 2") to verify the pad
+           * capture before the live trainer combo is re-enabled. */
+          if(STM.parmk3_wrapper_active) {
+            uint16_t parmk3_pad = fpga_get_parmk3_pad();
+            sram_writebyte((uint8_t)(parmk3_pad >> 8), SRAM_MCU_STATUS_ADDR + 9);
+            sram_writebyte((uint8_t)(parmk3_pad & 0xff), SRAM_MCU_STATUS_ADDR + 10);
+          }
           printf("%s ", get_cic_statename(get_cic_state()));
           cmd=snes_main_loop();
           if (usb_cmd && !cmd) cmd = usb_cmd;

@@ -679,7 +679,8 @@ mcu_cmd snes_mcu_cmd(
   .parmk3_game_loaded_out(parmk3_game_loaded),
   .parmk3_trainer_button_out(parmk3_trainer_button),
   .parmk3_leds_in(parmk3_leds),
-  .parmk3_mode_in(parmk3_mode)
+  .parmk3_mode_in(parmk3_mode),
+  .parmk3_pad_dbg_in(parmk3_pad_dbg)
 );
 
 address snes_addr(
@@ -750,6 +751,7 @@ wire [1:0]  parmk3_switch_pos;
 wire        parmk3_par_menu;
 wire        parmk3_game_loaded;
 wire        parmk3_trainer_button;
+wire [15:0] parmk3_pad_dbg;
 parmk3_top snes_parmk3(
   .CLK(CLK2),
   .RST_N(~SNES_reset_strobe),
@@ -772,7 +774,8 @@ parmk3_top snes_parmk3(
   .bus_override_data(parmk3_bus_override_data),
   .snes_soft_reset(parmk3_soft_reset),
   .effective_mode(parmk3_mode),
-  .leds(parmk3_leds)
+  .leds(parmk3_leds),
+  .pad_dbg(parmk3_pad_dbg)
 );
 
 reg pad_latch = 0;
