@@ -65,12 +65,10 @@ extern cfg_t CFG;
 extern snes_status_t STS;
 extern mcu_status_t STM;
 
-/* Pro Action Replay MK3 wrapper file paths. SAVE_BASEDIR is `("/sd2snes/saves/")`
- * with parens that block string-literal concatenation, so the .srm path is
- * inlined. Defined here (not next to the parmk3 functions further down) so
- * load_rom() above can reference them. */
+/* Pro Action Replay MK3 BIOS path. The MK3 SRAM (cheats/trainer state) is saved
+ * per game alongside the game's own .srm, as /sd2snes/saves/<game>.mk3srm --
+ * built with append_file_basename() at each call site. */
 #define PARMK3_BIOS_FILE ((uint8_t*)"/sd2snes/par_mk3.bin")
-#define PARMK3_SAVE_FILE ((uint8_t*)"/sd2snes/saves/par_mk3.srm")
 
 /* DEBUG: write a progress stage to the unused status byte at 0xFF1108
  * (SRAM_MCU_STATUS_ADDR + 8). Readable over USB via `read snes 0xFF1108 1`
@@ -406,7 +404,14 @@ uint32_t load_rom(uint8_t* filename, uint32_t base_addr, uint8_t flags) {
      * BIOS sees a cold-boot ($ABCD warm-boot magic absent), then overlay any
      * persisted .srm. */
     sram_memset(SRAM_PARMK3_MK3RAM_ADDR, SRAM_PARMK3_MK3RAM_SIZE, 0xFF);
-    load_sram_offload(PARMK3_SAVE_FILE, SRAM_PARMK3_MK3RAM_ADDR, 0);
+    {
+      /* Per-game MK3 SRAM: /sd2snes/saves/<game>.mk3srm. filename is still the
+       * original game name here (migrate_and_load_srm only rewrites it later). */
+      char mk3file[256] = SAVE_BASEDIR;
+      append_file_basename(mk3file, (char*)filename, ".mk3srm", sizeof(mk3file));
+      printf("PAR MK3: loading MK3 SRAM %s\n", mk3file);
+      load_sram_offload((uint8_t*)mk3file, SRAM_PARMK3_MK3RAM_ADDR, 0);
+    }
     if(file_res == FR_NO_FILE) file_res = 0;
     PARMK3_DBG(0x16);
   }
@@ -1045,21 +1050,26 @@ uint8_t parmk3_bios_available(void) {
 }
 
 uint32_t load_parmk3_sram(uint8_t* gamefile) {
-  (void)gamefile;
   /* Always start the wrapper from a known state. The MK3 BIOS itself
    * checks for the $ABCD warm-boot magic at DP $94 ($6194) to decide
    * between cold/warm boot; we initialise to 0xFF so the first launch
-   * triggers a cold boot. */
+   * triggers a cold boot, then overlay any persisted per-game .mk3srm. */
+  char mk3file[256] = SAVE_BASEDIR;
   sram_memset(SRAM_PARMK3_MK3RAM_ADDR, SRAM_PARMK3_MK3RAM_SIZE, 0xFF);
-  printf("PAR MK3: loading persisted SRAM %s\n", PARMK3_SAVE_FILE);
-  uint32_t res = load_sram_offload(PARMK3_SAVE_FILE, SRAM_PARMK3_MK3RAM_ADDR, 0);
+  append_file_basename(mk3file, (char*)gamefile, ".mk3srm", sizeof(mk3file));
+  printf("PAR MK3: loading MK3 SRAM %s\n", mk3file);
+  uint32_t res = load_sram_offload((uint8_t*)mk3file, SRAM_PARMK3_MK3RAM_ADDR, 0);
   if(file_res == FR_NO_FILE) file_res = 0;
   return res;
 }
 
 void save_parmk3_sram(uint8_t* gamefile) {
-  (void)gamefile;
-  save_sram(PARMK3_SAVE_FILE, SRAM_PARMK3_MK3RAM_SIZE, SRAM_PARMK3_MK3RAM_ADDR);
+  /* MK3 SRAM is saved per game, alongside the game's own .srm:
+   * /sd2snes/saves/<game>.mk3srm */
+  char mk3file[256] = SAVE_BASEDIR;
+  check_or_create_folder(SAVE_BASEDIR);
+  append_file_basename(mk3file, (char*)gamefile, ".mk3srm", sizeof(mk3file));
+  save_sram((uint8_t*)mk3file, SRAM_PARMK3_MK3RAM_SIZE, SRAM_PARMK3_MK3RAM_ADDR);
 }
 
 uint32_t load_with_parmk3(uint8_t* gamefile) {
