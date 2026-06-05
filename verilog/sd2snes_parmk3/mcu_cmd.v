@@ -575,7 +575,18 @@ always @(posedge clk) begin
         end
         32'h4: begin
           //if (group_read_buf == 8'h01) MCU_DATA_IN_BUF <= trc_config_data_in;
-          //else
+          // PAR MK3 controller-snoop diagnostic (group 0x05). Served on the
+          // config SPI read path, which never touches PSRAM, so it stays valid
+          // while a game runs (unlike the old SRAM mirror).
+          if (group_read_buf == 8'h05) begin
+            case (index_read_buf)
+              8'h00:   MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[15:8];
+              8'h01:   MCU_DATA_IN_BUF <= parmk3_pad_dbg_in[7:0];
+              8'h02:   MCU_DATA_IN_BUF <= parmk3_rd4219_cnt_in;
+              8'h03:   MCU_DATA_IN_BUF <= parmk3_rd4016_cnt_in;
+              default: MCU_DATA_IN_BUF <= 8'h0;
+            endcase
+          end else
             MCU_DATA_IN_BUF <= 0;
         end
       endcase

@@ -67,11 +67,10 @@ wire [7:0]  io_dout;
 wire        io_hit;
 wire [1:0]  fsm_state;
 wire        force_cb, clear_cb;
-// Trainer-combo pulses from the pad snoop (debounced). They gate the cheat
-// interceptor via combo_cheat_off WITHOUT touching the mapper switch, so the
-// auto-activation path (mapper on mcu_switch_pos) can never regress.
+// Trainer-combo pulses from the pad snoop (debounced). Currently unconnected:
+// the combo effect is held off until the controller capture is verified through
+// the clean SPI diagnostic (config group 0x05). pad_dbg/counters still feed it.
 wire        cheat_on_pulse, cheat_off_pulse;
-reg         combo_cheat_off;
 
 parmk3_io u_io(
   .CLK(CLK),
@@ -120,20 +119,12 @@ parmk3_pad_snoop u_pad(
   .rd4016_cnt(rd4016_cnt)
 );
 
-// Live cheat toggle. combo_cheat_off masks the interceptor on top of the mode,
-// so the mapper/mode stay exactly as the proven auto-activation path produced
-// them. Reset to 0 (cheats on) while the BIOS menu runs (control_b==0), so every
-// fresh launch starts with cheats applied and a stale toggle never carries over.
-always @(posedge CLK or negedge RST_N) begin
-  if (!RST_N)            combo_cheat_off <= 1'b0;
-  else if (!control_b)   combo_cheat_off <= 1'b0;  // BIOS menu baseline
-  else if (cheat_off_pulse) combo_cheat_off <= 1'b1;
-  else if (cheat_on_pulse)  combo_cheat_off <= 1'b0;
-end
-
-// True only while the interceptor is genuinely applying cheats (game mode AND
-// not masked off by the combo) — the signal the "cheats on" LED should follow.
-assign cheats_active = (effective_mode == 2'd1) & ~combo_cheat_off;
+// Live combo DISABLED again: the bus controller-snoop produced noise that the
+// debounce couldn't fully reject, so combo_cheat_off false-fired and silenced
+// cheats. Until the capture is verified through the clean SPI debug path, the
+// interceptor runs purely off the mode and the LED follows that. cheat_on/off
+// pulses stay generated (pad_dbg/counters feed the diagnostic) but unconnected.
+assign cheats_active = (effective_mode == 2'd1);
 
 parmk3_mapper u_mapper(
   .CLK(CLK),
@@ -159,7 +150,7 @@ wire intercept_hit;
 wire [7:0] intercept_byte;
 parmk3_intercept u_intercept(
   .CLK(CLK),
-  .enable((effective_mode == 2'd1) & ~combo_cheat_off),
+  .enable(effective_mode == 2'd1),
   .SNES_ADDR(SNES_ADDR),
   .slot0(slot0), .slot1(slot1), .slot2(slot2), .slot3(slot3), .slot4(slot4),
   .hit(intercept_hit),
@@ -170,7 +161,7 @@ wire nmi_hit;
 wire [7:0] nmi_byte;
 parmk3_nmi_hook u_nmi(
   .CLK(CLK),
-  .enable((effective_mode == 2'd1) & ~combo_cheat_off),
+  .enable(effective_mode == 2'd1),
   .SNES_ADDR(SNES_ADDR),
   .slot5(slot5),
   .slot6(slot6),
