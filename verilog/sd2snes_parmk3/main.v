@@ -686,7 +686,8 @@ mcu_cmd snes_mcu_cmd(
   .parmk3_rd4016_cnt_in(parmk3_rd4016_cnt),
   .parmk3_nmi5_dbg_in(parmk3_nmi5_dbg),
   .parmk3_nmi6_dbg_in(parmk3_nmi6_dbg),
-  .parmk3_state_dbg_in(parmk3_state_dbg)
+  .parmk3_state_dbg_in(parmk3_state_dbg),
+  .parmk3_nmi_fetch_cnt_in(parmk3_nmi_fetch_cnt)
 );
 
 address snes_addr(
@@ -764,6 +765,7 @@ wire [7:0]  parmk3_rd4016_cnt;
 wire [7:0]  parmk3_nmi5_dbg;
 wire [7:0]  parmk3_nmi6_dbg;
 wire [7:0]  parmk3_state_dbg;
+wire [7:0]  parmk3_nmi_fetch_cnt;
 parmk3_top snes_parmk3(
   .CLK(CLK2),
   .RST_N(~SNES_reset_strobe),
@@ -794,7 +796,8 @@ parmk3_top snes_parmk3(
   .rd4016_cnt(parmk3_rd4016_cnt),
   .nmi5_dbg(parmk3_nmi5_dbg),
   .nmi6_dbg(parmk3_nmi6_dbg),
-  .state_dbg(parmk3_state_dbg)
+  .state_dbg(parmk3_state_dbg),
+  .nmi_fetch_cnt(parmk3_nmi_fetch_cnt)
 );
 
 reg pad_latch = 0;

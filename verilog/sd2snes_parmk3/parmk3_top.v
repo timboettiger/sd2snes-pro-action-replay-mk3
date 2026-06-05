@@ -60,7 +60,8 @@ module parmk3_top(
   output [7:0] rd4016_cnt,       // DEBUG: manual read count
   output [7:0] nmi5_dbg,         // DEBUG: slot5[7:0] = NMI vector LSB
   output [7:0] nmi6_dbg,         // DEBUG: slot6[7:0] = NMI vector MSB
-  output [7:0] state_dbg         // DEBUG: {slot6!=0,slot5!=0,leds[1:0],mode[1:0],ctrlC0,ctrlB}
+  output [7:0] state_dbg,        // DEBUG: {slot6!=0,slot5!=0,leds[1:0],mode[1:0],ctrlC0,ctrlB}
+  output [7:0] nmi_fetch_cnt     // DEBUG: count of $00:FFEA vector fetches
 );
 
 wire [31:0] slot0, slot1, slot2, slot3, slot4, slot5, slot6;
@@ -137,6 +138,23 @@ assign nmi5_dbg  = slot5[7:0];
 assign nmi6_dbg  = slot6[7:0];
 assign state_dbg = {(slot6 != 32'h0), (slot5 != 32'h0), leds[1:0],
                     effective_mode, control_c[0], control_b};
+
+// DEBUG: count NMI-vector fetches ($00:FFEA reads). If this advances while a
+// game runs, the CPU really is fetching the NMI vector and our override fires
+// (-> CPU jumps to the slot5/6 address). If it stays put, the hook never gets a
+// vector read -> the BIOS PAR-NMI handler can't run. config 0x05 idx 9.
+reg [7:0] nmi_fetch_cnt_r;
+reg       nmi_hit_q;
+always @(posedge CLK or negedge RST_N) begin
+  if (!RST_N) begin
+    nmi_fetch_cnt_r <= 8'h0;
+    nmi_hit_q       <= 1'b0;
+  end else begin
+    nmi_hit_q <= nmi_hit;
+    if (nmi_hit & ~nmi_hit_q) nmi_fetch_cnt_r <= nmi_fetch_cnt_r + 1'b1;
+  end
+end
+assign nmi_fetch_cnt = nmi_fetch_cnt_r;
 
 parmk3_mapper u_mapper(
   .CLK(CLK),

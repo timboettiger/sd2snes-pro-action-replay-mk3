@@ -126,7 +126,8 @@ module mcu_cmd(
   input [7:0] parmk3_rd4016_cnt_in,  // DEBUG: manual read count (0xD9)
   input [7:0] parmk3_nmi5_dbg_in,    // DEBUG: NMI vector LSB (slot5) via config 0x05/0x06
   input [7:0] parmk3_nmi6_dbg_in,    // DEBUG: NMI vector MSB (slot6) via config 0x05/0x07
-  input [7:0] parmk3_state_dbg_in    // DEBUG: core state via config 0x05/0x08
+  input [7:0] parmk3_state_dbg_in,   // DEBUG: core state via config 0x05/0x08
+  input [7:0] parmk3_nmi_fetch_cnt_in // DEBUG: NMI vector fetch count via config 0x05/0x09
 );
 
 initial begin
@@ -594,6 +595,7 @@ always @(posedge clk) begin
               8'h06:   MCU_DATA_IN_BUF <= parmk3_nmi5_dbg_in;   // DEBUG: NMI vec LSB (slot5)
               8'h07:   MCU_DATA_IN_BUF <= parmk3_nmi6_dbg_in;   // DEBUG: NMI vec MSB (slot6)
               8'h08:   MCU_DATA_IN_BUF <= parmk3_state_dbg_in;  // DEBUG: core state
+              8'h09:   MCU_DATA_IN_BUF <= parmk3_nmi_fetch_cnt_in; // DEBUG: NMI fetch count
               default: MCU_DATA_IN_BUF <= 8'h0;
             endcase
           end else
