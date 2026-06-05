@@ -579,8 +579,12 @@ int main(void) {
             STM.parmk3_leds = st & PARMK3_STATUS_LEDS_MASK;
             rdybright(((st & PARMK3_STATUS_CHEATS_ON) && CFG.enable_par
                        && STM.parmk3_bios_loaded) ? bright : 0);   /* green: cheats active */
-            writebright((st & 1)        ? bright : 0);             /* yellow: groups (LED 1) */
-            readbright(((st >> 1) & 1)  ? bright : 0);             /* red: trainer  (LED 2) */
+            /* On this board readled is the YELLOW LED and writeled is RED
+             * (verified live: FPGA leds0=groups=1 lit the red one). So:
+             *   yellow (readled)  <- leds[0] = parameter groups ($61FC)
+             *   red    (writeled) <- leds[1] = trainer ($086000 bit1) */
+            readbright((st & 1)         ? bright : 0);             /* yellow: groups (LED 1) */
+            writebright(((st >> 1) & 1) ? bright : 0);             /* red: trainer  (LED 2) */
           }
           /* NOTE: the trainer combo is now handled entirely in the FPGA
            * (parmk3_pad_snoop -> combo_cheat_off), debounced and masking only
