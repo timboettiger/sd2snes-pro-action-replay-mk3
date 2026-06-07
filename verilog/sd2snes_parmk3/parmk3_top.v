@@ -103,9 +103,16 @@ parmk3_mapper u_mapper(
   // cheats apply automatically. The trainer/group logic runs entirely inside
   // the BIOS PAR-NMI handler (reached via the slot5/6 vector hook) -- the core
   // just lets it run and mirrors its LED output (see parmk3_io $00:61FE snoop).
+  //
+  // control_c[0] gates the $xx:AE00-$AFFF BIOS window during CHEATS_ACTIVE.
+  // The BIOS writes 0 on entry to the PAR-NMI handler so the CPU sees BIOS
+  // code at $80:AE20 (NMI entry), $AE99-$AECC (combo decoder), $AF13-$AF49
+  // (LED engine). Without this wire the mapper falls back to game ROM in that
+  // window and the trainer / LED logic never runs.
   .switch_pos(mcu_switch_pos),
   .control_b(control_b),
   .control_a(control_a),
+  .control_c(control_c),
   .SNES_ADDR(SNES_ADDR),
   .sel_mk3_bios(sel_mk3_bios),
   .sel_game_rom(sel_game_rom),

@@ -19,6 +19,7 @@ module parmk3_mapper(
   input  [1:0]  switch_pos,        // 0=NoCheats 1=CheatsActive 2=MK3Menu
   input  control_b,                // sticky game-launch latch from parmk3_io
   input  [7:0] control_a,          // bit 4 = peek game ROM through LoROM mirror
+  input  [7:0] control_c,          // bit 0 = 0 opens BIOS window at $xx:AE00-$AFFF
   input  [23:0] SNES_ADDR,
   output sel_mk3_bios,
   output sel_game_rom,
@@ -54,13 +55,32 @@ wire rom_region        = SNES_ADDR[15];
 wire is_fastrom_range  = (SNES_ADDR[23:22] == 2'b10);  // $80-$BF
 wire is_lorom_mirror   = (SNES_ADDR[23:22] == 2'b00);  // $00-$3F
 
+// PAR-NMI handler window: $xx:AE00-$AFFF, both in the LoROM mirror and the
+// FastROM image. The BIOS NMI handler ($80:AE20), its combo decoder
+// ($AE99-$AECC) and the per-frame LED toggle ($AF13-$AF49) all live here.
+// Mirrors mk3_mapper.sv:87-110 from the OpenFPGA reference; without this the
+// vector hook fires (verified at 60 Hz) but the CPU fetches game ROM bytes
+// at $80:AE20 instead of BIOS opcodes, so the handler never actually runs and
+// the trainer / LED engine stay dead.
+wire is_nmi_window     = (SNES_ADDR[15:9] == 7'b1010111);  // $AE00-$AFFF
+
 reg is_mk3_bios_path;
 reg is_game_path;
 always @* begin
   if (mode == 2'd0) begin
     is_mk3_bios_path = is_fastrom_range | (is_lorom_mirror & ~control_a[4]);
     is_game_path     = is_lorom_mirror & control_a[4];
+  end else if (mode == 2'd1) begin
+    // Cheats Active: game ROM normally, but the PAR-NMI handler window
+    // shows BIOS whenever Control C bit 0 = 0 (the BIOS asserts this on
+    // entry to the PAR-NMI; a $01-write would close the window again).
+    is_mk3_bios_path = is_nmi_window
+                     & (is_fastrom_range | is_lorom_mirror)
+                     & ~control_c[0];
+    is_game_path     = (is_fastrom_range | is_lorom_mirror)
+                     & ~is_mk3_bios_path;
   end else begin
+    // No Cheats: cheat interceptor + NMI hook are gated off; full game ROM.
     is_mk3_bios_path = 1'b0;
     is_game_path     = is_fastrom_range | is_lorom_mirror;
   end
