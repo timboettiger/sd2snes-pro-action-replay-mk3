@@ -29,6 +29,14 @@ module parmk3_io(
   output [7:0]  cpu_dout,
   output cpu_hit,
 
+  // FSM-driven overrides for the Control B latch. clear has priority over
+  // force; both override any CPU write in the same cycle. Needed because the
+  // CPU-side latch is sticky-set-only (matching the original Datel hardware),
+  // so without these the FSM cannot resync state on a switch change or a
+  // par_menu pulse and the mapper stays locked in game-running mode forever.
+  input         force_control_b,
+  input         clear_control_b,
+
   output [31:0] slot0,
   output [31:0] slot1,
   output [31:0] slot2,
@@ -106,10 +114,21 @@ always @(posedge CLK or negedge RST_N) begin
           cb_r     <= 1'b1;
           cb_pulse <= 1'b1;
         end
-        // sticky: cannot be cleared by CPU write
+        // sticky from the CPU side: cannot be cleared by a plain write.
       end
       else if (is_cc)  cc_r   <= cpu_din;
       else if (is_cd)  cd_r   <= cpu_din;
+    end
+    // FSM overrides land after the CPU-write block so they win on a same-cycle
+    // collision (e.g. BIOS sets bit0 in the same tick the FSM is clearing it
+    // because the switch moved back to MENU).
+    if (clear_control_b) begin
+      cb_r     <= 1'b0;
+      cb_pulse <= 1'b0;
+    end
+    else if (force_control_b & ~cb_r) begin
+      cb_r     <= 1'b1;
+      cb_pulse <= 1'b1;
     end
   end
 end

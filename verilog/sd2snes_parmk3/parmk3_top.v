@@ -66,6 +66,11 @@ parmk3_io u_io(
   .cpu_din(bus_data),
   .cpu_dout(io_dout),
   .cpu_hit(io_hit),
+  // FSM-side overrides for the Control B sticky latch. The original Datel
+  // hardware re-syncs this latch via a cart-side reset whenever the switch
+  // moves; sd2snes drives it through these two strobes from parmk3_fsm.
+  .force_control_b(force_cb),
+  .clear_control_b(clear_cb),
   .slot0(slot0), .slot1(slot1), .slot2(slot2), .slot3(slot3),
   .slot4(slot4), .slot5(slot5), .slot6(slot6),
   .control_a(control_a), .control_b(control_b),
