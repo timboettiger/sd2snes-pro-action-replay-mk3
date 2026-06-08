@@ -55,14 +55,28 @@ wire rom_region        = SNES_ADDR[15];
 wire is_fastrom_range  = (SNES_ADDR[23:22] == 2'b10);  // $80-$BF
 wire is_lorom_mirror   = (SNES_ADDR[23:22] == 2'b00);  // $00-$3F
 
-// PAR-NMI handler window: $xx:AE00-$AFFF, both in the LoROM mirror and the
-// FastROM image. The BIOS NMI handler ($80:AE20), its combo decoder
-// ($AE99-$AECC) and the per-frame LED toggle ($AF13-$AF49) all live here.
-// Mirrors mk3_mapper.sv:87-110 from the OpenFPGA reference; without this the
-// vector hook fires (verified at 60 Hz) but the CPU fetches game ROM bytes
-// at $80:AE20 instead of BIOS opcodes, so the handler never actually runs and
-// the trainer / LED engine stay dead.
-wire is_nmi_window     = (SNES_ADDR[15:9] == 7'b1010111);  // $AE00-$AFFF
+// PAR-NMI handler window: exact byte range $xx:AE12-$B3F6, in both the
+// LoROM mirror ($00-$3F) and the FastROM image ($80-$BF). Slots 5/6 are
+// programmed with #$AE12 at $80:912B, so the NMI vector hook redirects the
+// SNES NMI to $80:AE12. The 1509-byte window covers:
+//   $AE12-$AE42  NMI entry, register save, control writes, cheat dispatch
+//   $AE99-$AECC  Combo decoder (Select+X/Y/A/B/R/Start/Up/Down/L)
+//   $AFD0-$B083  Per-frame LED engine (drives $00:61FE bit0 + bit1)
+//   $B083-$B09D  NMI exit (writes Control C=1 at $B08B, then stack pops
+//                + jmp ($6180) back to the game's NMI handler)
+//   $B0A0-$B3F6  Cheat-apply + trainer-count helpers (SRAM-trampoline
+//                re-entries via jmp $80:B0A0 etc.)
+// Mirrors mk3_mapper.sv:6299b9a from the OpenFPGA reference.
+//
+// Control C is NOT used as a gate, even though it nominally indicates
+// "BIOS execution": the ROM writes Control C = 1 at $B08B, *before* the
+// NMI exit finishes ($B08F-$B09D still need BIOS bytes -- stack pops and
+// final jmp ($6180)). A Control C gate would close the window mid-handler
+// and crash on the last 18 bytes. Leaving the 1509-byte window open is
+// the small price for a clean PAR-NMI exit; control_c stays latched for
+// debug / future use.
+wire is_nmi_window     = (SNES_ADDR[15:0] >= 16'hAE12)
+                       & (SNES_ADDR[15:0] <= 16'hB3F6);
 
 reg is_mk3_bios_path;
 reg is_game_path;
@@ -72,11 +86,10 @@ always @* begin
     is_game_path     = is_lorom_mirror & control_a[4];
   end else if (mode == 2'd1) begin
     // Cheats Active: game ROM normally, but the PAR-NMI handler window
-    // shows BIOS whenever Control C bit 0 = 0 (the BIOS asserts this on
-    // entry to the PAR-NMI; a $01-write would close the window again).
+    // ($xx:AE12-$B3F6) always shows BIOS while in this mode -- no
+    // control_c gate (see comment above for why).
     is_mk3_bios_path = is_nmi_window
-                     & (is_fastrom_range | is_lorom_mirror)
-                     & ~control_c[0];
+                     & (is_fastrom_range | is_lorom_mirror);
     is_game_path     = (is_fastrom_range | is_lorom_mirror)
                      & ~is_mk3_bios_path;
   end else begin

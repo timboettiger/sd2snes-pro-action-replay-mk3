@@ -104,11 +104,12 @@ parmk3_mapper u_mapper(
   // the BIOS PAR-NMI handler (reached via the slot5/6 vector hook) -- the core
   // just lets it run and mirrors its LED output (see parmk3_io $00:61FE snoop).
   //
-  // control_c[0] gates the $xx:AE00-$AFFF BIOS window during CHEATS_ACTIVE.
-  // The BIOS writes 0 on entry to the PAR-NMI handler so the CPU sees BIOS
-  // code at $80:AE20 (NMI entry), $AE99-$AECC (combo decoder), $AF13-$AF49
-  // (LED engine). Without this wire the mapper falls back to game ROM in that
-  // window and the trainer / LED logic never runs.
+  // control_c is passed through for debug / future use but is NOT used as a
+  // window gate -- the mapper exposes the BIOS in $xx:AE12-$B3F6 whenever
+  // CHEATS_ACTIVE, regardless of control_c. The ROM writes Control C = 1 at
+  // $B08B before the NMI exit ($B08F-$B09D) has finished, so a control_c
+  // gate would close the window mid-handler. See parmk3_mapper.v for the
+  // full rationale and the per-range BIOS footprint.
   .switch_pos(mcu_switch_pos),
   .control_b(control_b),
   .control_a(control_a),
