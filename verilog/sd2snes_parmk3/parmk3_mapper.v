@@ -68,58 +68,73 @@ wire is_lorom_mirror   = (SNES_ADDR[23:22] == 2'b00);  // $00-$3F
 //   $B0A0-$B3F6  Cheat-apply + trainer-count helpers (SRAM-trampoline
 //                re-entries via jmp $80:B0A0 etc.)
 //
-// Gating: the BIOS opens the window by writing Control C = 0 on PAR-NMI
-// entry ($AE2B) and closes it again with Control C = 1 on exit ($B08B).
-// Game-side code (e.g. Super Mario World) reads its own $80:B0xx region
-// while the game's main loop runs -- so the window MUST be closed there,
-// otherwise the CPU fetches BIOS bytes instead of game code and the game
-// crashes before VBlank.
+// Gating: a plain "Control C bit 0 = 0 opens the window" gate is wrong on
+// this port because the ROM writes Control C = 0 at $8107 (boot) and $96A3
+// (pre-launch) and *never* writes 1 again before the first PAR-NMI exit at
+// $B08B (preservaction §5 / table at L339, L1204). So during the entire
+// game-boot path Control C = 0 -- a naive gate would leave the window open
+// throughout SMW's startup and crash on its $80:B0xx code.
 //
-// The OpenFPGA reference (mk3_mapper.sv:6299b9a) drops the Control C gate
-// and leaves the window always-open during CHEATS_ACTIVE because the ROM
-// writes Control C = 1 at $B08B *before* the NMI exit finishes ($B08F-$B09D
-// still need BIOS bytes -- stack pops + jmp ($6180)). That trade-off
-// breaks games that legitimately use the $B000-$B3F6 region (SMW does).
+// The original Datel IC sidesteps this with hardware-internal state: the
+// cart treats the cartridge bus as BIOS-owned only during an actual PAR-NMI
+// (from NMI-vector fetch through the handler's exit), not just whenever
+// Control C reads 0. We emulate that with two latches:
 //
-// Our fix: re-introduce the gate, but delay the closing edge by 1024
-// master cycles (~12 us @ 21.477 MHz, ~32 CPU cycles @ 2.68 MHz FastROM)
-// so the last 18 BIOS bytes after the $B08B Control C = 1 write are still
-// fetched as BIOS. After the delay expires the window snaps shut and the
-// game's main loop sees its own $B0xx region again. This matches the
-// observed behaviour of the original Datel hardware (PAR-NMI handler runs
-// fully, host game keeps its address space) without trading off
-// compatibility with games that use the window range.
+//   - nmi_active: set on the NMI-vector LSB fetch at $00:FFEA in
+//     CHEATS_ACTIVE mode (the slot-5/6 hook will redirect to $80:AE12 on
+//     the very next fetch, so this is the earliest reliable PAR-NMI entry
+//     marker). Cleared after the handler exits, see below.
+//
+//   - close_timer: armed on the rising edge of Control C bit 0 *while
+//     nmi_active is set* -- i.e. the BIOS just wrote $B08B = "I'm done".
+//     Holds the window open for 1024 master cycles (~12 us @ 21.477 MHz,
+//     ~30 CPU cycles @ FastROM) so the CPU can finish $B08F-$B09D
+//     (pla / rep / sep / jmp ($6180)) out of BIOS before the mapper hands
+//     the $B0xx region back to the game. When the timer reaches 1 we drop
+//     nmi_active and the window snaps shut.
+//
+// Outside CHEATS_ACTIVE the latches are forced clear -- mode 0 routes
+// everything to BIOS via its own path, mode 2 wants the full game ROM.
 wire is_nmi_window     = (SNES_ADDR[15:0] >= 16'hAE12)
                        & (SNES_ADDR[15:0] <= 16'hB3F6);
 
-// Delayed closing of the window after Control C bit 0 rises 0 -> 1. See the
-// rationale block above for why a plain combinational gate is insufficient.
-// 1024 master cycles is generous: 18 bytes * (FastROM 6 master cycles per
-// CPU cycle * ~4 CPU cycles per byte) = ~432 master cycles, so 1024 has
-// >2x margin even if the ROM ever runs in SlowROM mode at this point.
-reg [9:0] cc_close_timer;
+wire is_nmi_vec_fetch  = (SNES_ADDR == 24'h00FFEA);
+
+reg       nmi_active;
+reg [9:0] close_timer;
 reg       cc_prev_bit0;
 always @(posedge CLK or negedge RST_N) begin
   if (!RST_N) begin
-    cc_close_timer <= 10'd0;
-    cc_prev_bit0   <= 1'b0;
+    nmi_active   <= 1'b0;
+    close_timer  <= 10'd0;
+    cc_prev_bit0 <= 1'b0;
   end else begin
     cc_prev_bit0 <= control_c[0];
-    if (control_c[0] & ~cc_prev_bit0) begin
-      // Rising edge of Control C bit 0: BIOS just wrote $B08B (signaling
-      // "close the window"). Hold the window open for one more burst so the
-      // CPU can fetch $B08F-$B09D (pla / rep / sep / jmp ($6180)) before
-      // the mapper hands the $B0xx region back to the game.
-      cc_close_timer <= 10'd1023;
-    end else if (|cc_close_timer) begin
-      cc_close_timer <= cc_close_timer - 1'b1;
+
+    if (mode != 2'd1) begin
+      // Window logic only matters in CHEATS_ACTIVE. Other modes get a
+      // hard clear so we never carry stale state across a mode switch.
+      nmi_active  <= 1'b0;
+      close_timer <= 10'd0;
+    end else if (is_nmi_vec_fetch) begin
+      // NMI vector LSB fetched in CHEATS_ACTIVE: PAR-NMI handler is about
+      // to run. Open the window and stop any in-flight close timer (if a
+      // back-to-back NMI fires before the previous close-out finished).
+      nmi_active  <= 1'b1;
+      close_timer <= 10'd0;
+    end else if (control_c[0] & ~cc_prev_bit0 & nmi_active) begin
+      // Rising edge of Control C bit 0 during an active PAR-NMI: ROM just
+      // wrote $B08B. Start the close burst so $B08F-$B09D can still fetch
+      // BIOS.
+      close_timer <= 10'd1023;
+    end else if (|close_timer) begin
+      close_timer <= close_timer - 1'b1;
+      if (close_timer == 10'd1) nmi_active <= 1'b0;
     end
   end
 end
 
-// Window is open while the BIOS owns the bus (Control C bit 0 = 0), and for
-// the trailing delay window after it writes Control C = 1.
-wire window_open = ~control_c[0] | (|cc_close_timer);
+wire window_open = nmi_active;
 
 reg is_mk3_bios_path;
 reg is_game_path;
