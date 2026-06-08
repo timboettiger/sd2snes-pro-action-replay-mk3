@@ -96,6 +96,7 @@ assign cheats_active = (effective_mode == 2'd1);
 
 parmk3_mapper u_mapper(
   .CLK(CLK),
+  .RST_N(RST_N),
   // The mapper derives effective_mode from (switch_pos, control_b). While the
   // BIOS menu runs control_b==0, so every position resolves to MENU; when the
   // BIOS latches Control B on "Start Game", switch_pos==2 (MENU, the firmware
@@ -104,12 +105,13 @@ parmk3_mapper u_mapper(
   // the BIOS PAR-NMI handler (reached via the slot5/6 vector hook) -- the core
   // just lets it run and mirrors its LED output (see parmk3_io $00:61FE snoop).
   //
-  // control_c is passed through for debug / future use but is NOT used as a
-  // window gate -- the mapper exposes the BIOS in $xx:AE12-$B3F6 whenever
-  // CHEATS_ACTIVE, regardless of control_c. The ROM writes Control C = 1 at
-  // $B08B before the NMI exit ($B08F-$B09D) has finished, so a control_c
-  // gate would close the window mid-handler. See parmk3_mapper.v for the
-  // full rationale and the per-range BIOS footprint.
+  // control_c gates the $xx:AE12-$B3F6 BIOS window during CHEATS_ACTIVE,
+  // matched to the original Datel-IC behaviour: the BIOS writes Control C = 0
+  // on PAR-NMI entry ($AE2B) to open the window and Control C = 1 on exit
+  // ($B08B) to close it. The mapper delays the closing edge by ~1024 master
+  // cycles internally so $B08F-$B09D (pla / rep / sep / jmp ($6180)) can
+  // finish out of BIOS before the window snaps shut. This keeps games that
+  // legitimately use the $B000-$B3F6 region (e.g. SMW) running.
   .switch_pos(mcu_switch_pos),
   .control_b(control_b),
   .control_a(control_a),
