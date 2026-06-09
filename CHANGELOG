@@ -1,3 +1,10 @@
+v1.12.0-mk3
+===========
+ * [All] Add support for Pro Action Replay MK3
+          - Added new config menu
+          - Added option to enable/disable PAR
+          - Added option for LED
+
 v1.11.2
 =======
  * [All] Add context menu to recent games list:
