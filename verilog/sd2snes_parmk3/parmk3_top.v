@@ -57,6 +57,7 @@ wire [7:0]  io_dout;
 wire        io_hit;
 wire [1:0]  fsm_state;
 wire        force_cb, clear_cb;
+wire        in_par_nmi;       // from u_nmi: 1 while inside the PAR-NMI handler
 
 parmk3_io u_io(
   .CLK(CLK),
@@ -105,17 +106,15 @@ parmk3_mapper u_mapper(
   // the BIOS PAR-NMI handler (reached via the slot5/6 vector hook) -- the core
   // just lets it run and mirrors its LED output (see parmk3_io $00:61FE snoop).
   //
-  // control_c gates the $xx:AE12-$B3F6 BIOS window during CHEATS_ACTIVE,
-  // matched to the original Datel-IC behaviour: the BIOS writes Control C = 0
-  // on PAR-NMI entry ($AE2B) to open the window and Control C = 1 on exit
-  // ($B08B) to close it. The mapper delays the closing edge by ~1024 master
-  // cycles internally so $B08F-$B09D (pla / rep / sep / jmp ($6180)) can
-  // finish out of BIOS before the window snaps shut. This keeps games that
-  // legitimately use the $B000-$B3F6 region (e.g. SMW) running.
+  // The $xx:AE12-$B3F6 BIOS window is gated by in_par_nmi (driven by
+  // parmk3_nmi_hook) so it is open only while the PAR-NMI handler runs and
+  // closes again on the handler's final jmp ($6180) at $B09D. control_c is
+  // intentionally NOT used as a gate: it would close at $B08B before the
+  // handler's exit tail ($B08F-$B09D) is fetched.
   .switch_pos(mcu_switch_pos),
   .control_b(control_b),
   .control_a(control_a),
-  .control_c(control_c),
+  .in_par_nmi(in_par_nmi),
   .SNES_ADDR(SNES_ADDR),
   .sel_mk3_bios(sel_mk3_bios),
   .sel_game_rom(sel_game_rom),
@@ -140,12 +139,14 @@ wire nmi_hit;
 wire [7:0] nmi_byte;
 parmk3_nmi_hook u_nmi(
   .CLK(CLK),
+  .RST_N(RST_N),
   .enable(effective_mode == 2'd1),
   .SNES_ADDR(SNES_ADDR),
   .slot5(slot5),
   .slot6(slot6),
   .hit(nmi_hit),
-  .override_byte(nmi_byte)
+  .override_byte(nmi_byte),
+  .in_par_nmi(in_par_nmi)
 );
 
 // Override priority: NMI hook (vector fetch) > intercept (game cheat).

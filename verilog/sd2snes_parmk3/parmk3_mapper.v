@@ -20,7 +20,7 @@ module parmk3_mapper(
   input  [1:0]  switch_pos,        // 0=NoCheats 1=CheatsActive 2=MK3Menu
   input  control_b,                // sticky game-launch latch from parmk3_io
   input  [7:0] control_a,          // bit 4 = peek game ROM through LoROM mirror
-  input  [7:0] control_c,          // bit 0 gates the PAR-NMI BIOS window
+  input         in_par_nmi,        // from parmk3_nmi_hook: 1 while inside PAR-NMI handler
   input  [23:0] SNES_ADDR,
   output sel_mk3_bios,
   output sel_game_rom,
@@ -68,73 +68,29 @@ wire is_lorom_mirror   = (SNES_ADDR[23:22] == 2'b00);  // $00-$3F
 //   $B0A0-$B3F6  Cheat-apply + trainer-count helpers (SRAM-trampoline
 //                re-entries via jmp $80:B0A0 etc.)
 //
-// Gating: a plain "Control C bit 0 = 0 opens the window" gate is wrong on
-// this port because the ROM writes Control C = 0 at $8107 (boot) and $96A3
-// (pre-launch) and *never* writes 1 again before the first PAR-NMI exit at
-// $B08B (preservaction §5 / table at L339, L1204). So during the entire
-// game-boot path Control C = 0 -- a naive gate would leave the window open
-// throughout SMW's startup and crash on its $80:B0xx code.
+// CRITICAL: the window is gated by in_par_nmi (from parmk3_nmi_hook), NOT
+// left open for all of Cheats Active mode. The $AE12-$B3F6 range sits inside
+// the LoROM $8000-$FFFF game window of every bank, so leaving it BIOS-mapped
+// all the time would shadow 1509 bytes of game ROM in every bank and the
+// game would crash on the first access there (verified: SMW freezes right
+// after the Nintendo logo with an always-open window).
 //
-// The original Datel IC sidesteps this with hardware-internal state: the
-// cart treats the cartridge bus as BIOS-owned only during an actual PAR-NMI
-// (from NMI-vector fetch through the handler's exit), not just whenever
-// Control C reads 0. We emulate that with two latches:
+// in_par_nmi is set on the NMI vector fetch ($00:FFEA) and cleared on the
+// handler's final jmp ($6180) -- the indirect-target read at $B09D, which
+// the disassembly confirms is the only $00:6180 access in the entire
+// handler (and DP $80 is never used, so $6100 + $80 = $6180 is not aliased
+// by direct-page access). The latch spans the whole handler including the
+// exit tail ($B08F-$B09D, after the ROM writes Control C = 1 at $B08B),
+// so those exit fetches stay on BIOS.
 //
-//   - nmi_active: set on the NMI-vector LSB fetch at $00:FFEA in
-//     CHEATS_ACTIVE mode (the slot-5/6 hook will redirect to $80:AE12 on
-//     the very next fetch, so this is the earliest reliable PAR-NMI entry
-//     marker). Cleared after the handler exits, see below.
+// We deliberately do NOT gate on Control C: it would close at $B08B,
+// before $B08F-$B09D finishes. control_c stays latched in parmk3_io for
+// debug / future use but is unused here.
 //
-//   - close_timer: armed on the rising edge of Control C bit 0 *while
-//     nmi_active is set* -- i.e. the BIOS just wrote $B08B = "I'm done".
-//     Holds the window open for 1024 master cycles (~12 us @ 21.477 MHz,
-//     ~30 CPU cycles @ FastROM) so the CPU can finish $B08F-$B09D
-//     (pla / rep / sep / jmp ($6180)) out of BIOS before the mapper hands
-//     the $B0xx region back to the game. When the timer reaches 1 we drop
-//     nmi_active and the window snaps shut.
-//
-// Outside CHEATS_ACTIVE the latches are forced clear -- mode 0 routes
-// everything to BIOS via its own path, mode 2 wants the full game ROM.
-wire is_nmi_window     = (SNES_ADDR[15:0] >= 16'hAE12)
-                       & (SNES_ADDR[15:0] <= 16'hB3F6);
-
-wire is_nmi_vec_fetch  = (SNES_ADDR == 24'h00FFEA);
-
-reg       nmi_active;
-reg [9:0] close_timer;
-reg       cc_prev_bit0;
-always @(posedge CLK or negedge RST_N) begin
-  if (!RST_N) begin
-    nmi_active   <= 1'b0;
-    close_timer  <= 10'd0;
-    cc_prev_bit0 <= 1'b0;
-  end else begin
-    cc_prev_bit0 <= control_c[0];
-
-    if (mode != 2'd1) begin
-      // Window logic only matters in CHEATS_ACTIVE. Other modes get a
-      // hard clear so we never carry stale state across a mode switch.
-      nmi_active  <= 1'b0;
-      close_timer <= 10'd0;
-    end else if (is_nmi_vec_fetch) begin
-      // NMI vector LSB fetched in CHEATS_ACTIVE: PAR-NMI handler is about
-      // to run. Open the window and stop any in-flight close timer (if a
-      // back-to-back NMI fires before the previous close-out finished).
-      nmi_active  <= 1'b1;
-      close_timer <= 10'd0;
-    end else if (control_c[0] & ~cc_prev_bit0 & nmi_active) begin
-      // Rising edge of Control C bit 0 during an active PAR-NMI: ROM just
-      // wrote $B08B. Start the close burst so $B08F-$B09D can still fetch
-      // BIOS.
-      close_timer <= 10'd1023;
-    end else if (|close_timer) begin
-      close_timer <= close_timer - 1'b1;
-      if (close_timer == 10'd1) nmi_active <= 1'b0;
-    end
-  end
-end
-
-wire window_open = nmi_active;
+// Ported from openfpga-SNES-pro-action-replay-mk3/rtl/chip/mk3/mk3_mapper.sv
+// (commit 06666fe).
+wire is_nmi_window = (SNES_ADDR[15:0] >= 16'hAE12)
+                   & (SNES_ADDR[15:0] <= 16'hB3F6);
 
 reg is_mk3_bios_path;
 reg is_game_path;
@@ -143,12 +99,14 @@ always @* begin
     is_mk3_bios_path = is_fastrom_range | (is_lorom_mirror & ~control_a[4]);
     is_game_path     = is_lorom_mirror & control_a[4];
   end else if (mode == 2'd1) begin
-    // Cheats Active: game ROM normally, but the PAR-NMI handler window
-    // ($xx:AE12-$B3F6) shows BIOS while window_open (see rationale block
-    // above for the Control C / delayed-close logic).
+    // Cheats Active: game ROM everywhere, EXCEPT while the PAR-NMI handler
+    // is running -- then the $AE12-$B3F6 window shows BIOS. Gating on
+    // in_par_nmi (not just the address range) is essential: this range
+    // overlaps the game's own LoROM $8000-$FFFF space, so an always-open
+    // window would shadow game ROM and crash the game.
     is_mk3_bios_path = is_nmi_window
-                     & (is_fastrom_range | is_lorom_mirror)
-                     & window_open;
+                     & in_par_nmi
+                     & (is_fastrom_range | is_lorom_mirror);
     is_game_path     = (is_fastrom_range | is_lorom_mirror)
                      & ~is_mk3_bios_path;
   end else begin
