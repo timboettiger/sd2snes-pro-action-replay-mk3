@@ -23,9 +23,9 @@ cartridge LEDs mirror the two MK3 PCB LEDs plus a mode indicator.
 └── m3nu.bin (MK3) / menu.bin (MK2)  ← updated: menu with PAR MK3 submenu
 
 /sd2snes/saves/
-└── par_mk3.srm                  ← created automatically on first launch;
-                                   persists the 32 KB MK3 SRAM between
-                                   sessions (cheat list + warm-boot magic)
+└── {game_name}.srm              ← created automatically on first execution
+                                   of the game rom file; persists the 32 KB
+                                   MK3 SRAM between sessions.
 ```
 
 Plus the firmware on the cart itself:
